@@ -157,7 +157,11 @@ export default async function EquipmentPage() {
           marketingUsers={selectableUsers}
           coreRequests={coreRequests}
           canManage={isGeneralAdmin || permissionsList.includes("marketing:equipment")}
-          currentUserId={session.user.id}
+          currentUser={{
+            id: session.user.id,
+            name: currentUser?.name || session.user.name || "Usuario",
+            email: currentUser?.email || session.user.email || "",
+          }}
         />
       </div>
     </div>

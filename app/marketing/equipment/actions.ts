@@ -186,7 +186,8 @@ export async function createEquipmentLoan(formData: FormData) {
   const startTimeStr = (formData.get("startTime") as string)?.trim() || "08:00";
   const expectedReturnDateStr = (formData.get("expectedReturnDate") as string)?.trim();
   const expectedReturnTimeStr = (formData.get("expectedReturnTime") as string)?.trim() || "18:00";
-  const borrowerId = (formData.get("borrowerId") as string)?.trim() || userId;
+  // Coherencia Cero Papel: el custodio solicitante es estrictamente el usuario autenticado en sesión
+  const borrowerId = userId;
   const taskId = (formData.get("taskId") as string)?.trim() || null;
   const requestId = (formData.get("requestId") as string)?.trim() || null;
   const departureNotes = (formData.get("departureNotes") as string)?.trim() || null;
