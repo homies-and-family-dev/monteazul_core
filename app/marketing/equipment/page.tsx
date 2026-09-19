@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import EquipmentView from "./equipment-view";
 
 export default async function EquipmentPage() {
@@ -32,17 +33,24 @@ export default async function EquipmentPage() {
   }
 
   const rolesList = currentUser.roles.map((r) => r.role.name);
+  const areasList = currentUser.areas.map((a) => a.area.name);
   const permissionsList = currentUser.roles.flatMap((r) =>
     r.role.permissions.map((p) => p.permission.key)
   );
 
-  const isGeneralAdmin =
+  const isGerencia =
     rolesList.includes("Administrador General") ||
     rolesList.includes("Gerencia") ||
     permissionsList.includes("masters:manage_roles");
 
+  const isDirector = rolesList.some((r) =>
+    r.toLowerCase().includes("director")
+  );
+
+  const isMarketingDirector = isDirector && areasList.includes("Marketing");
+
   const canAccessEquipment =
-    isGeneralAdmin ||
+    isGerencia ||
     permissionsList.includes("marketing:equipment");
 
   // Verificación de acceso al Módulo Especializado de Marketing (Puntos 32-35)
@@ -64,13 +72,40 @@ export default async function EquipmentPage() {
     );
   }
 
-  // Cargar inventario de equipos
+  // Filtro de visibilidad según rol y usuario (Control individual idéntico a solicitudes)
+  let loansWhereClause: Prisma.EquipmentLoanWhereInput = {};
+  let etiquetaAlcance = "";
+
+  if (isGerencia) {
+    // Gerencia / Admin: supervisión transversal de todos los préstamos
+    loansWhereClause = {};
+    etiquetaAlcance = "Vista Gerencial: Todos los préstamos de la organización";
+  } else if (isMarketingDirector) {
+    // Director de Marketing: control de todos los préstamos del área
+    loansWhereClause = {};
+    etiquetaAlcance = "Vista de Dirección: Préstamos y control del área de Marketing";
+  } else {
+    // Operadores y usuarios individuales: únicamente procesos y préstamos correspondientes a su usuario
+    loansWhereClause = {
+      OR: [
+        { borrowerId: currentUser.id },
+        { departureDeliveredSignedById: currentUser.id },
+        { departureReceivedSignedById: currentUser.id },
+        { returnDeliveredSignedById: currentUser.id },
+        { returnReceivedSignedById: currentUser.id },
+      ],
+    };
+    etiquetaAlcance = "Vista Individual: Únicamente préstamos asociados a su usuario";
+  }
+
+  // Cargar inventario de equipos (catálogo disponible para todos los autorizados)
   const equipment = await prisma.equipment.findMany({
     orderBy: { code: "asc" },
   });
 
-  // Cargar préstamos con sus relaciones y firmas digitales
+  // Cargar préstamos con sus relaciones y firmas digitales filtrados por alcance de rol
   const loans = await prisma.equipmentLoan.findMany({
+    where: loansWhereClause,
     include: {
       borrower: { select: { id: true, name: true, email: true } },
       authorizedBy: { select: { id: true, name: true } },
@@ -96,11 +131,19 @@ export default async function EquipmentPage() {
     orderBy: { name: "asc" },
   });
 
-  // Solicitudes Core dirigidas a Marketing
+  // Solicitudes Core dirigidas a Marketing (filtradas por alcance individual si es operador)
+  const coreRequestsWhere: Prisma.RequestWhereInput = isGerencia || isMarketingDirector
+    ? { destinationArea: { name: "Marketing" } }
+    : {
+        destinationArea: { name: "Marketing" },
+        OR: [
+          { assignments: { some: { userId: currentUser.id } } },
+          { filedById: currentUser.id },
+        ],
+      };
+
   const coreRequests = await prisma.request.findMany({
-    where: {
-      destinationArea: { name: "Marketing" },
-    },
+    where: coreRequestsWhere,
     select: { id: true, ticketNumber: true, title: true },
     orderBy: { filedAt: "desc" },
     take: 30,
@@ -112,12 +155,15 @@ export default async function EquipmentPage() {
         {/* Cabecera del Módulo */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-blue-200 pb-5">
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-blue-700 text-white shadow-xs">
                 Módulo Especializado de Marketing
               </span>
               <span className="text-xs font-semibold text-blue-900 bg-blue-100 px-2.5 py-0.5 rounded-full border border-blue-200">
                 Sección 35: Equipos y Préstamos
+              </span>
+              <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-blue-100 text-blue-900 border border-blue-300">
+                {etiquetaAlcance}
               </span>
             </div>
             <h1 className="text-2xl font-bold text-blue-950 pt-2">
@@ -135,12 +181,14 @@ export default async function EquipmentPage() {
           initialLoans={loans}
           marketingUsers={selectableUsers}
           coreRequests={coreRequests}
-          canManage={isGeneralAdmin || permissionsList.includes("marketing:equipment")}
+          canManage={isGerencia || isMarketingDirector}
           currentUser={{
             id: session.user.id,
             name: currentUser?.name || session.user.name || "Usuario",
             email: currentUser?.email || session.user.email || "",
           }}
+          etiquetaAlcance={etiquetaAlcance}
+          isIndividualView={!isGerencia && !isMarketingDirector}
         />
       </div>
     </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import {
   createEquipment,
@@ -83,6 +83,8 @@ interface Props {
   canManage: boolean;
   currentUser: { id: string; name: string; email: string };
   currentUserId?: string;
+  etiquetaAlcance?: string;
+  isIndividualView?: boolean;
 }
 
 const CATEGORIES = [
@@ -105,6 +107,8 @@ export default function EquipmentView({
   canManage,
   currentUser,
   currentUserId,
+  etiquetaAlcance,
+  isIndividualView = false,
 }: Props) {
   const activeUserId = currentUser?.id || currentUserId || "";
   const activeUserName = currentUser?.name || "Usuario en Sesión";
@@ -382,11 +386,28 @@ export default function EquipmentView({
   const loanedCount = initialEquipment.filter((e) => e.status === "Prestado").length;
   const maintenanceCount = initialEquipment.filter((e) => e.status === "En Mantenimiento").length;
 
+  const [loanScopeFilter, setLoanScopeFilter] = useState<"all" | "mine">("all");
+
+  // Filtrado de préstamos según alcance (Individual para operador vs Global para dirección)
+  const scopedLoans = useMemo(() => {
+    if (isIndividualView || loanScopeFilter === "mine") {
+      return initialLoans.filter(
+        (l) =>
+          l.borrowerId === activeUserId ||
+          l.departureDeliveredSignedById === activeUserId ||
+          l.departureReceivedSignedById === activeUserId ||
+          l.returnDeliveredSignedById === activeUserId ||
+          l.returnReceivedSignedById === activeUserId
+      );
+    }
+    return initialLoans;
+  }, [initialLoans, isIndividualView, loanScopeFilter, activeUserId]);
+
   // Préstamos activos vs historial
-  const activeLoans = initialLoans.filter(
+  const activeLoans = scopedLoans.filter(
     (l) => l.status === "Solicitado" || l.status === "Aprobado" || l.status === "Entregado"
   );
-  const closedLoans = initialLoans.filter(
+  const closedLoans = scopedLoans.filter(
     (l) => l.status === "Devuelto" || l.status === "Devuelto con Novedad" || l.status === "Rechazado"
   );
 
@@ -431,7 +452,34 @@ export default function EquipmentView({
             </button>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {!isIndividualView && (activeTab === "activeLoans" || activeTab === "history") && (
+              <div className="flex items-center gap-1 bg-white p-0.5 rounded-lg border border-blue-200 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setLoanScopeFilter("all")}
+                  className={`px-2.5 py-1 rounded-md font-semibold text-[11px] transition-colors ${
+                    loanScopeFilter === "all"
+                      ? "bg-blue-700 text-white shadow-2xs"
+                      : "text-slate-600 hover:text-blue-950"
+                  }`}
+                >
+                  Todos los Préstamos
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLoanScopeFilter("mine")}
+                  className={`px-2.5 py-1 rounded-md font-semibold text-[11px] transition-colors ${
+                    loanScopeFilter === "mine"
+                      ? "bg-blue-700 text-white shadow-2xs"
+                      : "text-slate-600 hover:text-blue-950"
+                  }`}
+                >
+                  Solo mis Préstamos
+                </button>
+              </div>
+            )}
+
             {canManage && activeTab === "inventory" && (
               <button
                 type="button"
@@ -618,8 +666,15 @@ export default function EquipmentView({
       {activeTab === "activeLoans" && (
         <div className="space-y-4">
           {activeLoans.length === 0 ? (
-            <div className="p-8 bg-white rounded-xl border border-blue-200 text-center text-xs text-slate-600">
-              No hay préstamos activos ni solicitudes pendientes en este momento.
+            <div className="p-8 bg-white rounded-xl border border-blue-200 text-center text-xs text-slate-600 space-y-1">
+              <p className="font-semibold text-slate-800">
+                {isIndividualView || loanScopeFilter === "mine"
+                  ? "No tiene préstamos activos ni solicitudes pendientes asociadas a su usuario."
+                  : "No hay préstamos activos ni solicitudes pendientes en este momento."}
+              </p>
+              <p className="text-[11px] text-slate-500">
+                Puede solicitar equipos para sus actividades o salidas a campo utilizando el botón &quot;+ Solicitar Préstamo&quot;.
+              </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -829,8 +884,12 @@ export default function EquipmentView({
       {activeTab === "history" && (
         <div className="bg-white rounded-xl border border-blue-200 shadow-sm overflow-hidden">
           {closedLoans.length === 0 ? (
-            <div className="p-8 text-center text-xs text-slate-600">
-              No hay préstamos cerrados en el historial todavía.
+            <div className="p-8 text-center text-xs text-slate-600 space-y-1">
+              <p className="font-semibold text-slate-800">
+                {isIndividualView || loanScopeFilter === "mine"
+                  ? "No registra préstamos cerrados ni actas archivadas en su historial todavía."
+                  : "No hay préstamos cerrados en el historial todavía."}
+              </p>
             </div>
           ) : (
             <div className="overflow-x-auto">
