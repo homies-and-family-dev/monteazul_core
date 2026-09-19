@@ -1,0 +1,1645 @@
+DOCUMENTO MAESTRO
+PROYECTO MONTE AZUL SUITE
+Plataforma Corporativa de Gestión, Coordinación y Seguimiento de Solicitudes y Operaciones Internas
+Versión: Documento maestro funcional consolidado (Actualizado con directrices V1: enlaces externos y medición por responsable)
+Fecha: Septiembre de 2026
+Estado: Documento base con definiciones iniciales de alcance V1
+________________
+
+
+1. PROPÓSITO DEL DOCUMENTO
+Este documento consolida la visión funcional del Proyecto Monte Azul Suite, integrando las necesidades corporativas identificadas y las especificaciones particulares del área de Marketing.
+Su propósito es establecer una visión común de:
+* qué problema debe resolver la plataforma;
+* qué capacidades deben ser transversales a toda la organización;
+* cómo deben interactuar las diferentes áreas;
+* cómo se gestionan las solicitudes;
+* cómo se asignan y ejecutan las tareas;
+* cómo se registran tiempos, responsables, estados y evidencias;
+* cómo se administran los usuarios, roles y permisos;
+* cómo se gestionan maestros y parámetros;
+* cómo se visualizan indicadores y objetivos;
+* qué funcionalidades corresponden específicamente a cada área;
+* qué aspectos todavía requieren validación funcional;
+* y qué temas deberán definirse posteriormente desde el punto de vista técnico.
+Este documento no constituye todavía la especificación técnica de desarrollo.
+La arquitectura de software, API, ORM, base de datos, infraestructura, almacenamiento, autenticación, integraciones, despliegue y demás decisiones técnicas deberán documentarse en un documento técnico independiente.
+________________
+
+
+2. VISIÓN GENERAL DE MONTE AZUL SUITE
+Monte Azul Suite será una plataforma corporativa interna destinada a coordinar y controlar las solicitudes, tareas y procesos que se generan entre las diferentes áreas de la organización.
+La plataforma deberá permitir que una necesidad originada en un área pueda ser:
+1. registrada;
+2. dirigida al área responsable;
+3. recibida y radicada dentro del flujo corporativo;
+4. asignada a un responsable;
+5. ejecutada;
+6. documentada mediante observaciones y evidencias;
+7. entregada al solicitante;
+8. validada por quien originó la solicitud;
+9. cerrada;
+10. y posteriormente utilizada para generar indicadores, métricas, reportes y análisis gerencial.
+La plataforma debe permitir incorporar nuevas áreas y nuevos procesos sin tener que rediseñar el núcleo corporativo.
+________________
+
+
+3. PRINCIPIO FUNDAMENTAL DE ARQUITECTURA FUNCIONAL
+La plataforma se organizará conceptualmente en cuatro niveles:
+MONTE AZUL SUITE
+├── CORE CORPORATIVO
+├── MÓDULO GERENCIAL TRANSVERSAL
+├── ÁREAS FUNCIONALES
+│   ├── Marketing
+│   ├── Comercial
+│   ├── Administración
+│   └── Futuras áreas
+└── INFRAESTRUCTURA / IMPLEMENTACIÓN TÉCNICA
+
+
+3.1 Core Corporativo
+El Core Corporativo contiene las capacidades comunes que deben poder ser utilizadas por diferentes áreas.
+No representa un área organizacional.
+Entre sus capacidades se encuentran:
+* usuarios;
+* roles;
+* permisos;
+* áreas;
+* solicitudes;
+* tareas;
+* asignaciones;
+* estados y flujos;
+* radicación;
+* comentarios;
+* archivos y evidencias;
+* notificaciones;
+* auditoría;
+* medición de tiempos;
+* métricas;
+* objetivos;
+* reportes;
+* maestros y parámetros.
+________________
+
+
+4. MÓDULO GERENCIAL TRANSVERSAL
+El Módulo Gerencial no representa un área operativa.
+Su función es proporcionar a la dirección una visión consolidada de la operación.
+Debe permitir, de acuerdo con los permisos correspondientes:
+* visualizar información de diferentes áreas;
+* consultar solicitudes;
+* consultar tareas;
+* consultar responsables;
+* revisar tiempos;
+* analizar productividad;
+* visualizar indicadores;
+* consultar objetivos;
+* revisar cumplimiento;
+* consultar reportes;
+* identificar cargas de trabajo;
+* analizar estados y flujos;
+* y obtener información consolidada para la toma de decisiones.
+La información disponible dependerá de los permisos del usuario.
+________________
+
+
+5. ÁREAS FUNCIONALES
+Las áreas funcionales son independientes entre sí y se encuentran al mismo nivel organizacional.
+Inicialmente se contemplan:
+* Marketing;
+* Comercial;
+* Administración.
+Posteriormente podrán incorporarse nuevas áreas.
+Cada área podrá tener:
+* director;
+* operadores;
+* procesos propios;
+* tipos de solicitudes;
+* maestros específicos;
+* formularios particulares;
+* indicadores;
+* objetivos;
+* reglas operativas;
+* documentos;
+* archivos;
+* tareas especializadas.
+La incorporación de un área nueva no debe requerir modificar los conceptos fundamentales del Core Corporativo.
+________________
+
+
+
+
+
+
+
+
+
+
+
+
+6. RADICACIÓN TRANSVERSAL DE SOLICITUDES
+6.1 Concepto
+La plataforma contará con una funcionalidad transversal de RADICACIÓN DE SOLICITUDES.
+Será el punto común mediante el cual los usuarios autorizados podrán registrar solicitudes dirigidas a las diferentes áreas de la organización.
+No debe entenderse como una solicitud exclusiva de un área.
+Es una capacidad corporativa transversal.
+________________
+
+
+7. ÁREA DE ORIGEN Y ÁREA DE DESTINO
+Una definición fundamental del sistema es que toda solicitud deberá identificar claramente:
+Área de origen
+Es el área desde la cual se radica la solicitud.
+Representa el área que origina la necesidad dentro de la estructura organizacional.
+Área de destino
+Es el área a la cual se dirige la solicitud.
+Representa el área responsable de gestionar y atender la solicitud.
+Por lo tanto, una solicitud deberá contener como mínimo:
+SOLICITUD
+│
+├── Usuario que radica
+│
+├── Área de origen
+│
+└── Área de destino
+
+
+El usuario que realiza la radicación deberá seleccionar explícitamente el área de origen desde la cual está radicando y el área de destino responsable de atenderla.
+Esto permite diferenciar:
+* quién físicamente registró la solicitud;
+* desde qué área se origina;
+* y qué área debe gestionarla.
+________________
+
+
+8. USUARIOS CON Y SIN MÓDULO OPERATIVO
+El sistema deberá separar conceptualmente:
+tener capacidad para radicar solicitudes
+de
+tener acceso a un módulo operativo de un área.
+Un usuario podría tener:
+Permiso: Radicar solicitudes
+
+
+sin necesariamente tener acceso operativo a:
+* Marketing;
+* Comercial;
+* Administración;
+* u otra área.
+Por ejemplo:
+Usuario
+├── Radicar solicitudes
+└── Sin módulo operativo
+
+
+Otro usuario podría tener:
+Usuario
+├── Radicar solicitudes
+└── Marketing
+Y otro:
+Usuario
+├── Radicar solicitudes
+├── Comercial
+└── Administración
+Los permisos determinarán qué puede hacer cada usuario.
+________________
+
+
+9. PERMISOS DE RADICACIÓN
+La capacidad de radicar solicitudes estará controlada mediante roles y permisos.
+Deberá diferenciarse entre:
+* permiso para radicar;
+* permiso para consultar;
+* permiso para trabajar solicitudes;
+* permiso para asignar;
+* permiso para cambiar estados;
+* permiso para administrar información;
+* permiso para administrar maestros;
+* permiso para consultar indicadores;
+* permiso gerencial;
+* permisos administrativos especiales.
+Tener permiso para radicar no implica automáticamente tener permiso para gestionar las solicitudes de todas las áreas.
+
+9.1 Reglas de visibilidad de requerimientos en la bandeja
+Para garantizar la confidencialidad interáreas y la segregación funcional:
+* Perfiles de Gerencia / Administrador General: tienen visibilidad transversal de todos los requerimientos de todas las áreas de la organización.
+* Directores de Área: visualizan todos los requerimientos de su respectiva área (tanto solicitudes dirigidas a su área como destino, como solicitudes originadas desde su área) y las radicadas por ellos.
+* Operadores y solicitantes: únicamente pueden visualizar en su bandeja y acceder a los expedientes de los requerimientos que han sido asignados directamente a su usuario o que fueron radicados por ellos mismos.
+Los perfiles de un área no tendrán acceso ni visibilidad sobre las solicitudes de otras áreas a menos que participen formalmente como solicitante o asignatario.
+________________
+
+
+10. FORMULARIO DE RADICACIÓN
+La ventana transversal de radicación deberá iniciar con la selección de:
+1. Área de origen.
+2. Área de destino.
+Una vez seleccionada el área de destino, el sistema deberá presentar los campos y opciones correspondientes a dicha área.
+
+
+
+
+Conceptualmente:
+RADICAR SOLICITUD
+
+
+Área de origen
+        ↓
+Área de destino
+        ↓
+Tipo de solicitud
+        ↓
+Campos específicos del área
+        ↓
+Descripción / detalles
+        ↓
+Adjuntos / referencias
+        ↓
+Radicar
+
+
+________________
+
+
+11. FORMULARIOS CONTEXTUALES POR ÁREA
+Las solicitudes no necesariamente tendrán exactamente los mismos datos.
+Por esta razón, el formulario deberá contemplar:
+Información corporativa común
+Ejemplos:
+* área de origen;
+* área de destino;
+* usuario solicitante;
+* tipo de solicitud;
+* prioridad;
+* descripción;
+* fecha;
+* fecha requerida;
+* observaciones;
+* archivos;
+* referencias.
+Información específica del área
+El área de destino podrá definir información adicional propia de su operación.
+Por ejemplo, Marketing podría requerir:
+* marca;
+* proyecto;
+* destino;
+* tipo de contenido;
+* formato;
+* objetivo;
+* copy;
+* referencias;
+* piezas;
+* etc.
+Mientras que otra área podría requerir información completamente diferente.
+Por lo tanto:
+Formulario corporativo
+        +
+Formulario específico del área
+La definición exacta de qué campos serán configurables y cómo se administrarán técnicamente queda pendiente de la especificación funcional y técnica correspondiente.
+________________
+
+
+12. RESPONSABILIDAD DEL ÁREA DE DESTINO
+Una vez radicada una solicitud, el área seleccionada como destino será responsable de su gestión.
+No existe una etapa corporativa de "aceptación" de la solicitud en el área de destino, sino que debe quedar RADICADA inmediatamente a la espera de asignación o devolución por error al radicar u otras inconsistencias.
+significa que la solicitud ha sido formalmente registrada y dirigida al área indicada.
+El área de destino debe procesarla.
+________________
+
+
+13. DEVOLUCIÓN POR REGISTRO INCORRECTO
+Si el área de destino identifica que la solicitud:
+* fue dirigida incorrectamente;
+* tiene información incorrecta;
+* requiere una corrección de la solicitud original;
+* o necesita información que debe ser modificada por el origen,
+podrá devolverla al origen con la correspondiente información u observación.
+La devolución no equivale a una etapa de aceptación.
+La persona que radicó podrá determinar si:
+* corrige y continúa con la misma solicitud;
+* o registra una nueva solicitud cuando corresponda.
+La regla exacta para diferenciar una corrección de una nueva radicación deberá documentarse con mayor detalle durante la definición funcional.
+________________
+
+
+14. FLUJO CORPORATIVO ESTÁNDAR
+El flujo corporativo definido actualmente es:
+RADICADO
+   ↓
+ASIGNADO
+   ↓
+EN PROCESO
+   ↓
+ENTREGADO
+   ↓
+CERRADO
+14.1 RADICADO
+Representa el momento en que la solicitud queda formalmente registrada y dirigida al área de destino.
+Debe quedar registrado:
+* fecha;
+* hora;
+* usuario que radica;
+* área de origen;
+* área de destino;
+* información de la solicitud.
+________________
+
+
+14.2 ASIGNADO
+La solicitud llega al área de destino y se asigna a un operador responsable.
+Debe quedar registrado:
+* quién realizó la asignación;
+* operador asignado;
+* fecha;
+* hora.
+________________
+
+
+14.3 EN PROCESO
+El operador comienza efectivamente a trabajar sobre la solicitud.
+Este estado representa el período principal de ejecución.
+________________
+
+
+14.4 ENTREGADO
+El operador finaliza la actividad y entrega el resultado al solicitante.
+En este momento termina el ciclo principal de ejecución del operador.
+________________
+
+
+14.5 CERRADO
+El solicitante confirma que la entrega es satisfactoria.
+La solicitud queda formalmente finalizada.
+________________
+
+
+15. SOLICITUD DE INFORMACIÓN ADICIONAL
+Cuando el operador necesita información adicional del solicitante:
+RADICADO
+   ↓
+ASIGNADO
+   ↓
+EN PROCESO
+   ↓
+EN REVISIÓN
+   ↓
+REENVIADA
+   ↓
+EN PROCESO
+   ↓
+ENTREGADO
+   ↓
+CERRADO
+
+
+EN REVISIÓN
+El operador solicita información adicional.
+Este período representa una espera/revisión y no debe confundirse con el tiempo efectivo de ejecución.
+REENVIADA
+El solicitante proporciona la información requerida y la solicitud vuelve al operador para continuar su procesamiento.
+________________
+
+
+16. DEVOLUCIÓN DEL RESULTADO POR INSATISFACCIÓN
+Cuando el operador entrega el resultado pero el solicitante considera que no es satisfactorio:
+RADICADO
+   ↓
+ASIGNADO
+   ↓
+EN PROCESO
+   ↓
+ENTREGADO
+   ↓
+DEVUELTO
+   ↓
+POR CONFIRMAR
+   ↓
+CERRADO
+
+
+DEVUELTO
+El solicitante indica que el resultado no es satisfactorio y debe proporcionar la información o justificación correspondiente.
+POR CONFIRMAR
+El resultado corregido o nueva entrega ha sido presentada nuevamente al solicitante.
+Se espera su confirmación.
+CERRADO
+El solicitante confirma que el resultado es satisfactorio.
+________________
+
+
+17. MEDICIÓN DE TIEMPOS Y RESPONSABLE POR ESTADO
+Toda solicitud deberá mantener trazabilidad temporal detallada asociada a los estados y al responsable en cada momento.
+Se deberán registrar:
+* fecha y hora de radicación;
+* fecha y hora de asignación;
+* fecha y hora de inicio de proceso;
+* cambios de estado con usuario actor;
+* fecha y hora de entrega;
+* fecha y hora de cierre;
+* devoluciones;
+* revisiones;
+* reenvíos;
+* nuevos ciclos de trabajo.
+
+17.1 Identificación del responsable por estado:
+La plataforma evaluará en qué estado se encuentra cada solicitud para medir el tiempo transcurrido atribuible al respectivo responsable:
+* En estado RADICADO: el tiempo transcurre bajo la responsabilidad del Área de Destino (Director / Coordinador encargado de la asignación).
+* En estados ASIGNADO y EN PROCESO: el tiempo transcurre bajo la responsabilidad del Operador asignado.
+* En estado EN REVISIÓN: el tiempo transcurre bajo la responsabilidad del Solicitante (en espera de aclaraciones o información adicional).
+* En estado ENTREGADO: el tiempo transcurre bajo la responsabilidad del Solicitante (en espera de revisión y confirmación de satisfacción).
+* En estado DEVUELTO: el tiempo de respuesta y corrección se atribuye al Operador asignado.
+Esto permitirá identificar con precisión cuellos de botella, tiempos de atención, tiempos de respuesta de solicitantes y tiempos netos de producción.
+
+La plataforma deberá poder medir tiempos en:
+* minutos;
+* horas;
+* días.
+________________
+
+
+18. TIEMPO PRINCIPAL DE EJECUCIÓN
+El tiempo principal de ejecución del operador será medido durante los períodos en que la solicitud esté:
+EN PROCESO
+
+
+Cuando pasa a:
+ENTREGADO
+
+
+finaliza ese ciclo principal de ejecución.
+El tiempo que permanece pendiente de confirmación por parte del solicitante no deberá afectar el tiempo principal de ejecución del operador.
+________________
+
+
+19. MÚLTIPLES CICLOS DE EJECUCIÓN
+Una solicitud puede requerir más de un ciclo de trabajo.
+Ejemplo:
+EN PROCESO
+   ↓
+ENTREGADO
+   ↓
+DEVUELTO
+   ↓
+EN PROCESO
+   ↓
+ENTREGADO
+
+
+Cada período de ejecución deberá poder ser identificado individualmente.
+La forma exacta de consolidar:
+* tiempo total;
+* tiempo efectivo;
+* tiempo de espera;
+* número de devoluciones;
+* número de ciclos;
+queda pendiente de definición detallada de las métricas.
+________________
+
+
+20. TAREAS Y SOLICITUDES
+Se establece una diferencia conceptual entre:
+Solicitud
+Representa la necesidad planteada por un usuario o área.
+Tarea
+Representa el trabajo necesario para atender una solicitud.
+Una solicitud puede potencialmente generar una o varias tareas.
+Ejemplo:
+Solicitud:
+Campaña de comunicación
+        ↓
+Tareas:
+├── Diseño
+├── Fotografía
+├── Video
+└── Copy
+
+20.1 Implementación operativa en V1:
+Se habilita el panel de subtareas operativas dentro del expediente de cada solicitud:
+* Permite a la Dirección del área o al operador crear actividades desglosadas para coordinar el trabajo requerido.
+* Permite asignar cada subtarea individualmente a un operador específico del área de destino.
+* Cuenta con ciclo de vida por subtarea (Pendiente → En Proceso → Completada) y cálculo automático de avance porcentual de la solicitud.
+* Contabilización independiente de tiempos por tarea: registra la fecha y hora de inicio de trabajo y finalización de cada actividad, acumulando el tiempo neto invertido en cada subtarea incluso a través de múltiples ciclos de reapertura.
+* Sumatoria consolidada de tiempos de subtareas: la plataforma calcula automáticamente la suma total de las horas y minutos dedicados en todas las subtareas para conocer con exactitud el esfuerzo global requerido en el cumplimiento integral del servicio.
+* Bloqueo de inicio no autorizado: cuando una solicitud es asignada a un operador y contiene subtareas, no se permite iniciar la ejecución de ninguna subtarea sin antes haber iniciado formalmente la atención de la solicitud general (transición al estado En Proceso). El sistema notificará con un mensaje explicativo y mantendrá las acciones inhabilitadas hasta que se active la atención general.
+* Bloqueo de entrega: la solicitud general no puede ser entregada al solicitante si existen subtareas derivadas en estado pendiente o en proceso.
+* Bloqueo posterior a finalización: una vez terminada, entregada o cerrada la solicitud general, las subtareas se consolidan en modo lectura y queda inhabilitada su eliminación o reapertura salvo que el requerimiento sea reabierto o devuelto para ajustes.
+* Conserva la relación directa con el folio e identificador único del requerimiento.
+________________
+
+
+21. IDENTIFICADOR ÚNICO
+Toda solicitud deberá contar con un identificador único.
+Este identificador deberá mantenerse durante todo su ciclo de vida.
+Debe permitir relacionar:
+* solicitud;
+* tareas;
+* asignaciones;
+* estados;
+* comentarios;
+* archivos;
+* evidencias;
+* tiempos;
+* devoluciones;
+* entregas;
+* confirmaciones;
+* historial.
+________________
+
+
+22. COMUNICACIÓN CONTEXTUAL DENTRO DE CADA SOLICITUD
+Cada solicitud deberá contar con un espacio de comunicación integrado directamente en su panel de seguimiento.
+La comunicación no se manejará como un chat general independiente, sino como un conjunto de mensajes y respuestas asociados específicamente a la solicitud.
+Su objetivo será permitir que los participantes puedan:
+* realizar aclaraciones;
+* solicitar información adicional;
+* responder preguntas;
+* ampliar la información inicialmente registrada;
+* informar cambios o novedades;
+* entregar instrucciones;
+* justificar devoluciones;
+* compartir archivos;
+* compartir enlaces a documentos o archivos pesados;
+* dejar evidencia de las comunicaciones relevantes durante el proceso.
+________________
+
+
+22.1 Caja de texto de comunicación
+El panel de seguimiento de cada solicitud deberá disponer de una caja de texto para que los usuarios autorizados puedan registrar mensajes relacionados con la solicitud.
+Conceptualmente:
+┌─────────────────────────────────────────────┐
+│ SOLICITUD #000123                          
+│ Área origen: Comercial                     
+│ Área destino: Marketing                     
+│ Estado: EN PROCESO                         
+├─────────────────────────────────────────────┤
+│ HISTORIAL DE SEGUIMIENTO                    
+│                                             
+│ Usuario A                                 
+│ 10:32                                      
+│ Necesitamos ajustar el formato...          
+│                                             
+│ Usuario B                                  
+│ 11:05                                       
+│ Se realizará el ajuste solicitado.          
+│                                            
+├─────────────────────────────────────────────┤
+│ Escribir mensaje...                         
+│                                             
+│ [Adjuntar archivo] [Enviar]                 
+└─────────────────────────────────────────────┘
+
+
+Cada mensaje deberá conservar como mínimo:
+* usuario que lo registra;
+* fecha;
+* hora;
+* contenido;
+* archivos adjuntos, cuando existan;
+* enlaces compartidos, cuando existan.
+________________
+
+
+22.2 Comunicación asociada a la trazabilidad
+Los mensajes deberán formar parte del historial de la solicitud.
+Por lo tanto, la comunicación deberá poder consultarse junto con:
+* cambios de estado;
+* asignaciones;
+* devoluciones;
+* entregas;
+* solicitudes de información;
+* respuestas;
+* archivos;
+* evidencias;
+* y demás eventos relevantes.
+El objetivo es que una persona autorizada pueda revisar el contexto completo de una solicitud sin tener que buscar la información en conversaciones externas.
+________________
+
+
+22.3 Archivos adjuntos
+La caja de comunicación deberá permitir adjuntar archivos cuando el tamaño y las condiciones de almacenamiento lo permitan.
+Los archivos podrán utilizarse para:
+* documentos;
+* imágenes;
+* evidencias;
+* piezas gráficas;
+* archivos de trabajo;
+* documentos de soporte;
+* fotografías;
+* videos;
+* y otros archivos relacionados con la solicitud.
+El límite de peso de los archivos deberá definirse posteriormente de acuerdo con la solución técnica de almacenamiento.
+________________
+
+
+22.4 Manejo de archivos pesados y enlaces externos
+Por el momento no se implementará el alojamiento externo automático a través de la API de Google Drive. En su lugar, el sistema dispondrá de un espacio / campo para ingresar enlaces directos de Internet (con la posibilidad de ingresar la dirección de un repositorio externo, carpeta en Google Drive, OneDrive o servicio similar).
+El usuario podrá ingresar este enlace tanto al momento de radicar la solicitud como dentro de las comunicaciones y entregas de la solicitud.
+Conceptualmente:
+Archivo pequeño / permitido
+        ↓
+Adjuntar directamente
+        ↓
+Solicitud
+
+Archivo pesado o proyecto
+        ↓
+Almacenar en repositorio / Drive / nube
+        ↓
+Copiar URL o enlace de repositorio
+        ↓
+Ingresar enlace en la solicitud / comunicación
+
+De esta manera, la plataforma no obliga a cargar físicamente archivos de gran tamaño dentro de la base de datos o servidor.
+________________
+
+
+22.5 Enlaces a repositorios y servicios externos (Definición V1)
+Para esta etapa del proyecto:
+* No se desarrollará integración automática vía API con Google Drive ni proveedores de almacenamiento externo.
+* Se adopta de forma estándar el ingreso manual del enlace de internet (URL de repositorio de archivos, repositorio de código, Drive, etc.).
+* La plataforma validará el formato de la URL y la presentará como hipervínculo clickeable y seguro para los usuarios autorizados con acceso al expediente.
+________________
+
+
+22.6 Diferenciación entre archivo adjunto y enlace
+El sistema deberá distinguir conceptualmente entre:
+Archivo adjunto
+Archivo almacenado mediante el mecanismo de archivos soportado directamente por la plataforma.
+Enlace externo
+Referencia a un archivo almacenado fuera de la plataforma, por ejemplo en Google Drive.
+En ambos casos, la referencia deberá quedar asociada a la comunicación correspondiente y, cuando sea necesario, a la solicitud.
+________________
+
+
+22.7 Acceso a los archivos
+El acceso a los archivos y enlaces deberá respetar los permisos establecidos para la solicitud.
+Compartir un enlace no deberá implicar automáticamente que cualquier usuario de la organización pueda acceder al archivo.
+Las reglas de permisos y seguridad para archivos y enlaces deberán definirse en la especificación técnica.
+________________
+
+
+22.8 Comunicación durante estados especiales
+El mecanismo de comunicación deberá utilizarse especialmente en situaciones como:
+EN REVISIÓN
+El operador puede registrar la información que necesita del solicitante.
+El solicitante podrá responder mediante la misma caja de comunicación y adjuntar la información requerida.
+REENVIADA
+La respuesta del solicitante queda registrada como parte del historial y permite continuar el procesamiento.
+DEVUELTO
+El solicitante deberá poder explicar mediante la comunicación por qué considera que la entrega no es satisfactoria.
+Podrá adjuntar referencias, evidencias o archivos adicionales.
+POR CONFIRMAR
+El operador podrá registrar información relacionada con la nueva entrega y compartir los archivos o enlaces correspondientes.
+________________
+
+
+22.9 Comunicación como evidencia del proceso
+Las comunicaciones deberán conservarse como parte de la trazabilidad histórica de la solicitud.
+Esto permitirá posteriormente analizar:
+* solicitudes de información;
+* cantidad de interacciones;
+* devoluciones;
+* aclaraciones;
+* tiempos entre comunicaciones;
+* archivos compartidos;
+* evolución de la solicitud;
+* y contexto de las decisiones tomadas durante el proceso.
+La definición exacta de qué eventos serán considerados métricas deberá establecerse posteriormente.
+________________
+
+
+22.10 No constituye un chat corporativo general
+Esta funcionalidad no pretende reemplazar herramientas de comunicación general como chats corporativos.
+La comunicación estará contextualizada y vinculada a una solicitud específica.
+Por lo tanto:
+Chat general
+     ≠
+Comunicación de una solicitud
+
+
+La comunicación de la solicitud debe permanecer dentro del expediente o panel de seguimiento correspondiente.
+Esto permite que cualquier usuario autorizado que posteriormente consulte la solicitud pueda conocer su contexto sin depender de conversaciones externas.
+
+
+________________
+
+
+23. ARCHIVOS Y EVIDENCIAS
+Las solicitudes y tareas podrán requerir:
+* documentos;
+* fotografías;
+* videos;
+* diseños;
+* archivos de trabajo;
+* evidencias;
+* enlaces;
+* documentos finales.
+Los archivos deberán conservar relación con la solicitud o tarea correspondiente.
+La estrategia de almacenamiento pesado será objeto de definición técnica independiente.
+La especificación de Marketing contempla Google Drive como alternativa inicial para almacenamiento de archivos pesados, manteniendo en la aplicación la información estructurada y referencias correspondientes.
+________________
+
+
+24. MAESTROS Y PARÁMETROS
+El Core Corporativo deberá incorporar un Módulo de Maestros y Parámetros.
+Su objetivo es reducir la dependencia del desarrollo para administrar listas y opciones utilizadas por los procesos.
+Los usuarios autorizados podrán crear, modificar, activar o desactivar opciones.
+Ejemplos:
+* tipos de servicio;
+* tipos de solicitud;
+* prioridades;
+* categorías;
+* tipos de equipo;
+* tipos de contenido;
+* marcas;
+* proyectos;
+* formatos;
+* destinos;
+* y otras listas necesarias.
+________________
+
+
+25. ADMINISTRACIÓN DE MAESTROS
+Los maestros podrán ser:
+Corporativos
+Administrados centralmente.
+Específicos de un área
+Administrados por usuarios autorizados de dicha área.
+Los permisos determinarán quién puede:
+* consultar;
+* crear;
+* modificar;
+* activar;
+* desactivar.
+Cuando un valor ya haya sido utilizado históricamente, deberá evitarse su eliminación física si esto afecta la trazabilidad.
+La opción preferida será:
+ACTIVO / INACTIVO
+
+
+permitiendo conservar los registros históricos.
+
+25.1 Implementación operativa en V1:
+Se habilita el módulo de administración de datos maestros (/masters) integrado en la barra de navegación:
+* Control de acceso por roles: visible y operativo exclusivamente para Directores de Área y Administración General / Gerencia.
+* Autonomía funcional por área: los Directores de Área pueden crear, editar, activar y desactivar valores pertenecientes a su respectiva área funcional (ej: Tipos de Solicitud de Marketing, Comercial o Administración). La Administración General posee control transversal sobre todos los ámbitos y los catálogos corporativos.
+* Catálogos maestros sujetos a desarrollo: la creación y definición de nuevos catálogos maestros (MasterType) obedece estrictamente al ciclo de desarrollo de software y arquitectura del sistema, dado que cada catálogo debe estar necesariamente acoplado a procesos de negocio, flujos y campos en la plataforma. Por ende, la interfaz de usuario no expone opciones de creación de nuevos catálogos, concentrando la administración operativa exclusivamente en la gestión de sus valores (MasterValue).
+* Submenús exclusivos en el panel de navegación lateral: la navegación entre los distintos catálogos maestros se delega con exclusividad a los submenús del panel lateral de navegación (Sidebar). Bajo el grupo "Configuración / Datos Maestros", el usuario dispone de submenús directos para cada catálogo del sistema ("Tipo de Solicitud", "Prioridad", etc.) y la vista global ("Todos los Catálogos"). Al seleccionar un submenú, la pantalla de maestros se presenta a ancho completo y enfocada en gestionar los valores y la vigencia del catálogo elegido, sin duplicar barras internas de submenús ni listas de filtro redundantes.
+* Protección de integridad histórica: el sistema valida el uso del valor en solicitudes registradas antes de permitir cualquier eliminación. Si el valor ha sido utilizado históricamente, la eliminación física se bloquea y el sistema instruye al usuario a desactivarlo (cambio a estado inactivo), garantizando que los expedientes pasados preserven sus datos íntegros.
+* Sincronización con radicación: el formulario de radicación (/requests/new) consume en tiempo real únicamente los valores con estado activo, filtrando por el área de destino seleccionada o ámbito corporativo transversal.
+________________
+
+
+26. ROLES Y PERMISOS
+Los roles y permisos deberán ser independientes de la denominación del cargo.
+Un usuario podrá recibir diferentes capacidades según su responsabilidad.
+Se contemplan, conceptualmente:
+* usuario solicitante;
+* operador;
+* director de área;
+* administrador general;
+* usuario gerencial;
+* administrador temporal;
+* otros perfiles que se definan posteriormente.
+La plataforma deberá permitir asignar permisos de manera independiente.
+
+26.1 ARQUITECTURA DE NAVEGACIÓN Y MENÚ DESPLEGABLE POR ROLES Y ÁREAS (V1)
+Para evitar la saturación visual derivada del crecimiento modular de la plataforma y garantizar una experiencia ejecutiva limpia, la navegación se estructura en un menú lateral desplegable (sidebar) en la parte izquierda de la pantalla, complementado por un encabezado superior minimalista:
+
+1. Estructura de Navegación Lateral Desplegable (Sidebar):
+   - Mecanismo de repliegue y despliegue:
+     * Modo expandido (escritorio): Ancho de 272px con nombres completos, divisores por grupo temático, indicadores de rol/área y botones de colapso de sección.
+     * Modo contraído (escritorio): Ancho compacto de 72px centrado en iconografía corporativa con tooltips informativos y botón de re-expansión rápida.
+     * Modo responsivo (móvil/tablets): Panel deslizable (drawer) oculto por defecto con activación vía botón de menú (hamburguesa), fondo semitransparente con desenfoque y cierre automático al seleccionar cualquier destino.
+
+2. Segregación de Menú según Roles y Áreas:
+   - Grupo Solicitudes (Core Corporativo):
+     * Accesible para todos los usuarios autenticados (Solicitantes, Operadores, Directores y Administradores).
+     * Opciones: Bandeja de Solicitudes (/requests) y Radicar Solicitud (/requests/new).
+   - Grupo Estrategia y Gerencia:
+     * Accesible exclusivamente para Administrador General, Gerencia y Directores de Área.
+     * Opciones con acordeón desplegable: Módulo Gerencial (/management) y Objetivos de Área (/goals).
+   - Grupo Áreas Funcionales:
+     * Despliega las áreas funcionales según la pertenencia del usuario o permisos globales.
+     * Subgrupo Área de Marketing: Visible para integrantes del área de Marketing y Administradores Generales. Integra un menú desplegable interactivo con:
+       - Tablero y Campañas (/marketing).
+       - Calendario de Contenidos (/marketing/calendar).
+       - Inventario y Préstamos de Equipos (/marketing/equipment).
+   - Grupo Configuración y Catálogos:
+     * Accesible para Administrador General, Gerencia y Directores de Área.
+     * Opción: Datos Maestros (/masters).
+
+3. Navegación Exclusiva mediante Panel Lateral (Supresión de Barra Superior):
+   - Se elimina por completo la barra horizontal superior.
+   - Toda la navegación, identificación del usuario en sesión (nombre, correo, rol activo y área asignada), accesos directos y el control de cierre de sesión se centralizan de forma exclusiva y autosuficiente en el panel lateral (Sidebar).
+   - El área principal de trabajo queda 100% despejada desde la parte superior de la pantalla, maximizando el espacio útil y la legibilidad en todos los módulos corporativos.
+________________
+
+
+27. ADMINISTRACIÓN GENERAL
+El rol de administración general deberá poder tener una visión transversal de la plataforma.
+Dependiendo de los permisos definidos podrá:
+* administrar usuarios;
+* administrar roles;
+* administrar permisos;
+* administrar áreas;
+* consultar solicitudes;
+* gestionar configuraciones;
+* consultar indicadores;
+* revisar procesos;
+* administrar maestros corporativos;
+* realizar operaciones administrativas.
+También se contempla la posibilidad de otorgar accesos administrativos temporales.
+________________
+
+
+28. DIRECTORES DE ÁREA
+Los directores de cada área deberán contar con capacidades de gestión sobre su respectiva área.
+Entre ellas podrán encontrarse:
+* visualizar solicitudes;
+* asignar responsables;
+* reasignar tareas;
+* consultar cargas de trabajo;
+* consultar indicadores;
+* gestionar objetivos;
+* consultar cumplimiento;
+* revisar resultados;
+* gestionar información propia del área.
+El alcance exacto dependerá de los permisos asignados.
+________________
+
+
+29. OBJETIVOS GERENCIALES Y DE ÁREA
+Los directores podrán registrar objetivos:
+* de corto plazo;
+* de mediano plazo;
+* de largo plazo.
+Los objetivos deberán poder asociarse con:
+* indicadores;
+* metas;
+* períodos;
+* avances;
+* responsables.
+La plataforma deberá permitir visualizar el progreso.
+
+29.1 IMPLEMENTACIÓN DE OBJETIVOS GERENCIALES Y DE ÁREA (V1)
+El módulo de Objetivos Estratégicos ha sido implementado bajo la ruta `/goals`, accesible desde la navegación corporativa superior para directores y gerencia:
+
+1. Segregación y Alcance por Roles:
+   - Administrador General y Gerencia: Capacidad de registrar, gestionar y monitorear objetivos de alcance "Gerencial" (estratégicos transversales) y objetivos de alcance "Área" para cualquier área de la organización.
+   - Directores de Área: Capacidad de registrar y gestionar objetivos de alcance "Área" focalizados exclusivamente en las áreas que dirigen, así como dar seguimiento a los objetivos gerenciales transversales.
+   - Operadores y Solicitantes: Acceso restringido para garantizar confidencialidad estratégica.
+
+2. Atributos Estructurados de los Objetivos:
+   - Ámbito / Nivel: "Gerencial" (corporativo global) o "Área" (departamental).
+   - Horizonte Temporal:
+     * Corto Plazo: 1 a 3 meses (ej. trimestre o mes en curso).
+     * Mediano Plazo: 3 a 6 meses (ej. semestre).
+     * Largo Plazo: 6 a 12 meses (ej. anual).
+   - Período formal (ej. "Q1 2026", "Semestre 1 2026", "Año 2026").
+   - Fechas de inicio y fecha límite de cumplimiento.
+   - Indicador Cuantitativo: Nombre formal de la métrica (ej. "% Satisfacción General", "Campañas Completadas", "Horas Promedio").
+   - Meta Cuantitativa (Target Value) y Unidad de Medida (ej. %, Unidades, Horas, etc.).
+   - Valor Actual (Current Value) con cálculo automático del porcentaje de avance.
+   - Responsable asignado y Área vinculada.
+   - Estado de Ejecución: "En Curso", "Cumplido", "En Riesgo", "No Cumplido", "Pausado".
+
+3. Bitácora de Avances Cuantitativos y Trazabilidad (GoalProgressUpdate):
+   - Registro cronológico de avances: Cada actualización cuantitativa se almacena en el modelo de auditoría `GoalProgressUpdate`, conservando el valor anterior, el nuevo valor, fecha/hora exacta, usuario responsable y nota justificativa.
+   - Transición automática de estado: Al alcanzar o superar la meta cuantitativa establecida (100% de cumplimiento), el sistema ofrece transición automática a estado "Cumplido".
+   - Historial desplegable en tarjeta: Cada objetivo cuenta con su bitácora colapsable donde se puede auditar la evolución histórica de la métrica y sus observaciones.
+
+4. Cuadro de Mando y Tarjetas de Gestión:
+   - KPIs de cabecera: Total de Objetivos, Objetivos Cumplidos, En Curso, En Riesgo y Porcentaje de Avance Global promedio ponderado.
+   - Filtros dinámicos interactivos: Filtrado instantáneo por texto de búsqueda, Ámbito (Gerencial / Área), Horizonte (Corto / Mediano / Largo Plazo), Área funcional y Estado.
+   - Modal interactivo de registro de avances: Permite actualizar el valor del indicador y documentar el sustento del progreso con un solo clic.
+   - Edición y eliminación protegida: Modificación de parámetros de objetivos y eliminación controlada.
+________________
+
+
+30. DASHBOARDS
+La plataforma deberá contar con dashboards de acuerdo con el nivel de usuario.
+Dashboard corporativo / gerencial
+Podrá mostrar:
+* solicitudes;
+* tareas;
+* tiempos;
+* estados;
+* productividad;
+* cargas de trabajo;
+* cumplimiento;
+* indicadores;
+* objetivos;
+* resultados por área.
+Dashboard de área
+Podrá mostrar:
+* solicitudes recibidas;
+* solicitudes en proceso;
+* solicitudes pendientes;
+* tareas asignadas;
+* carga de operadores;
+* tiempos;
+* productividad;
+* cumplimiento.
+Dashboard individual
+Podrá mostrar información correspondiente al usuario y sus permisos.
+________________
+
+
+31. REPORTES
+El sistema deberá permitir generar información para análisis y seguimiento.
+Los reportes podrán incluir:
+* solicitudes por área;
+* solicitudes por período;
+* solicitudes por estado;
+* solicitudes por prioridad;
+* tiempos de atención;
+* tiempos de ejecución;
+* productividad;
+* tareas;
+* devoluciones;
+* cumplimiento;
+* objetivos;
+* indicadores.
+Se contempla la posibilidad de exportar información.
+________________
+
+
+31.1 IMPLEMENTACIÓN DEL MÓDULO GERENCIAL Y REPORTES (V1)
+El Módulo Gerencial Transversal ha sido implementado bajo la ruta `/management` integrando cuadros de mando analíticos e informes ejecutivos:
+
+1. Segregación y Alcance por Roles:
+   - Administrador General y Gerencia: Vista corporativa global y comparativa sobre todas las áreas del sistema.
+   - Directores de Área: Vista gerencial focalizada en las áreas que dirigen, con métricas completas de su operación.
+   - Operadores y Solicitantes sin rol directivo: Acceso restringido.
+
+2. Cuadro de Mando Ejecutivo (KPIs Clave):
+   - Total de Solicitudes radicadas en el período seleccionado.
+   - Tasa de Cierre y Efectividad (% de solicitudes culminadas a satisfacción).
+   - Tiempo Promedio de Ciclo Total (desde radicación hasta cierre formal).
+   - Tiempo Neto de Trabajo (permanencia media acumulada en estado En Proceso).
+   - Tasa de Devoluciones (% de expedientes que requirieron ciclos de ajuste por insatisfacción).
+   - Cumplimiento y Avance de Subtareas (porcentaje de tareas derivadas finalizadas).
+
+3. Diagnóstico de Cuellos de Botella:
+   - Medición precisa de permanencia media en cada estado del flujo (Radicado, Asignado, En Proceso, En Revisión, Entregado, Devuelto, Reenviada).
+   - Identificación automática de la etapa crítica de mayor concentración de tiempo con diagnóstico gerencial descriptivo y barras porcentuales.
+
+4. Balance Operativo por Áreas:
+   - Análisis comparativo de solicitudes recibidas (destino) vs originadas (solicitante).
+   - Desglose de solicitudes activas, cerradas, efectividad, devoluciones y tiempo medio por área.
+
+5. Monitoreo de Saturación de Operadores:
+   - Registro de solicitudes activas, solicitudes cerradas y subtareas asignadas por operador.
+   - Clasificación visual del nivel de saturación operativa: Normal (< 3 activas), Moderada (3 a 4) y Alta (5 o más).
+
+6. Filtros Dinámicos y Exportación de Datos:
+   - Filtrado temporal: Últimos 7 días, Últimos 30 días, Este mes, Últimos 90 días o Todo el histórico.
+   - Filtro por Área de Destino, Área de Origen, Prioridad y Estado.
+   - Exportador a formato CSV estándar con codificación UTF-8 compatible con Microsoft Excel y herramientas BI.
+________________
+
+
+32. MÓDULO DE MARKETING
+Marketing será uno de los primeros módulos funcionales de la plataforma.
+El módulo deberá utilizar las capacidades del Core Corporativo sin convertir conceptos específicos de Marketing en conceptos corporativos.
+Entre sus funcionalidades documentadas se encuentran:
+* Mis Tareas;
+* Requerimientos;
+* Equipos;
+* Dashboard;
+* Calendario de Contenido de Community;
+* Materiales de Campaña;
+* Documentación de Procesos;
+* Archivo de Material Producido;
+* Administración.
+________________
+
+
+33. PARTICULARIDADES DE MARKETING
+Marketing requiere información específica relacionada con:
+* marcas;
+* proyectos;
+* contenidos;
+* redes sociales;
+* pauta;
+* material audiovisual;
+* diseño;
+* copy;
+* campañas;
+* calendario;
+* archivo de material.
+Estos conceptos deberán permanecer dentro del módulo de Marketing.
+No deberán incorporarse al Core como conceptos corporativos.
+________________
+
+
+34. MARKETING — SOLICITUDES
+La solicitud de Marketing deberá utilizar la radicación transversal corporativa.
+Ejemplo conceptual:
+Área de origen: Comercial
+Área de destino: Marketing
+Tipo: Pieza para campaña
+        ↓
+Campos específicos de Marketing
+        ↓
+Radicación
+
+
+La misma ventana transversal podrá utilizarse para:
+Administración → Marketing
+Comercial → Marketing
+Recursos Humanos → Marketing
+Marketing → Marketing
+
+
+según los permisos y procesos definidos.
+________________
+
+
+35. MARKETING — EQUIPOS
+El módulo contempla:
+* inventario;
+* selección múltiple de equipos;
+* motivo;
+* tarea asociada;
+* fechas;
+* aprobación;
+* entrega;
+* devolución;
+* fotografías antes y después;
+* historial;
+* documento PDF correspondiente.
+No deberán existir préstamos simultáneos incompatibles para un mismo equipo.
+________________
+
+
+35.1 IMPLEMENTACIÓN DE EQUIPOS Y PRÉSTAMOS (V1)
+El Módulo de Inventario y Préstamo de Equipos Audiovisuales ha sido implementado bajo la ruta `/marketing/equipment`:
+
+1. Modelos de Datos en Prisma ORM:
+   - `Equipment`: Catálogo físico de equipos con código correlativo único (EQ-MKT-XXX), categoría (Cámaras, Lentes, Drones, Audio, Iluminación, Estabilizadores), marca, modelo, serie de fábrica, estado (Disponible, Prestado, En Mantenimiento, Baja), condición física, ubicación de almacenamiento y accesorios incluidos.
+   - `EquipmentLoan`: Folio único correlativo (PREST-MKT-XXXXXX), custodio responsable, aprobador, fechas de entrega y devolución (programada y real), motivo/proyecto, tarea o solicitud Core asociada, notas y enlaces a evidencias fotográficas antes y después.
+   - `EquipmentLoanItem`: Soporte para selección múltiple de equipos dentro de una misma acta de préstamo con seguimiento de condición de salida y retorno.
+
+2. Prevención de Préstamos Simultáneos (Punto 1006):
+   - El sistema valida en tiempo real que ningún equipo seleccionado se encuentre en estado 'Prestado', 'En Mantenimiento' o posea una reserva activa solapada con las fechas solicitadas, impidiendo colisiones de agenda operativa.
+
+3. Flujo Operativo y Actas Oficiales Imprimibles / PDF:
+   - Formato F-MKT-01 (Acta de Entrega y Préstamo): Formaliza la salida física del material, cambia el estado a 'Entregado' y marca automáticamente los equipos como 'Prestado'. Genera el formato corporativo con relación de equipos, accesorios, evidencias antes y recuadro de firmas.
+   - Formato F-MKT-02 (Acta de Devolución e Inspección Técnica): Registra la recepción física, estado de los equipos devueltos, novedades/daños si existiesen y fotos de retorno. Reincorpora automáticamente los equipos a 'Disponible' (o 'En Mantenimiento' si se reportó novedad).
+   - Impresión y Exportación PDF: Vista formal corporativa imprimible con membrete oficial, cláusula de custodia y firmas de responsabilidad.
+
+4. Trazabilidad e Integridad Histórica:
+   - No se permite la eliminación de equipos que cuenten con historial previo de préstamos o actas asociadas.
+   - Monitoreo en tiempo real de préstamos vencidos en mora.
+________________
+
+
+36. MARKETING — CALENDARIO DE CONTENIDOS
+El calendario contempla información como:
+* marca;
+* año;
+* mes;
+* semana;
+* día;
+* tema;
+* formato;
+* objetivo;
+* plataformas;
+* copy;
+* archivo;
+* miniatura;
+* estado;
+* notas.
+Se contemplan vistas:
+* mensual;
+* semanal;
+* diario.
+________________
+
+
+36.1 IMPLEMENTACIÓN DEL CALENDARIO DE CONTENIDOS (V1)
+El Módulo de Calendario de Contenidos de Marketing ha sido implementado bajo la ruta `/marketing/calendar` preservando la arquitectura modular (Punto 51: sin sobrecargar el Core Corporativo):
+
+1. Modelo de Datos Especializado (`MarketingContent`):
+   - Marca: Segmentación por marcas del grupo ("Monte Azul", "Monte Azul Inmobiliaria", "Proyectos Monte Azul").
+   - Fecha y Hora: Marca temporal exacta de publicación.
+   - Tema / Título: Asunto central del contenido.
+   - Formato: Carrusel, Reel / Video Corto, Post Estático, Historia, Video Formato Largo, Infografía, Comunicado.
+   - Objetivo: Alcance y Reconocimiento, Engagement y Comunidad, Conversión y Leads, Fidelización, Tráfico Web, Branding.
+   - Plataformas: Selección multicanal (Instagram, Facebook, TikTok, LinkedIn, YouTube, WhatsApp).
+   - Copywriting: Texto redactado para el post y pie de foto.
+   - Archivos y Miniaturas: Enlaces validados a Google Drive, OneDrive o repositorios externos.
+   - Estado Editorial: Ciclo de vida del contenido (Borrador, En Producción, En Aprobación, Aprobado, Publicado, Cancelado).
+   - Vinculación Core: Relación opcional con una solicitud del Core Corporativo (ej. solicitud de diseño o producción audiovisual).
+   - Responsable Asignado y Creador: Trazabilidad del operador de Marketing a cargo.
+
+2. Modalidades de Visualización:
+   - Vista Mensual: Cuadrícula interactiva con navegación de meses, días del mes, selector de mes actual ("Hoy") y tarjetas con badges de estado y hora.
+   - Vista Semanal: 7 columnas verticales detalladas (Lunes a Domingo) con desglose de copy, canal y responsable.
+   - Vista Diaria / Lista: Tabla editorial exhaustiva de publicaciones con filtros dinámicos.
+
+3. Exportación y Gestión:
+   - Exportador a Excel / CSV (Punto 1373) con codificación UTF-8 y todas las columnas editoriales.
+   - Modal interactivo de creación y edición completa.
+   - Modal de detalle rápido con previsualización de copy y cambio directo de estado editorial en un clic.
+   - Acceso restringido al personal del área de Marketing y a la Dirección General.
+________________
+
+
+37. MARKETING — MATERIAL DE CAMPAÑAS
+Debe existir un repositorio para materiales relacionados con campañas.
+Los materiales podrán provenir de:
+* tareas cerradas;
+* solicitudes;
+* cargas manuales.
+Deberán conservar información que permita identificar su contexto.
+________________
+
+
+38. MARKETING — DOCUMENTACIÓN DE PROCESOS
+El módulo deberá permitir administrar documentos como:
+* manuales;
+* procesos;
+* lineamientos;
+* guías de marca;
+* documentación interna.
+Los documentos podrán estar relacionados con fichas o procesos correspondientes.
+________________
+
+
+39. MARKETING — ARCHIVO DE MATERIAL PRODUCIDO
+Se contempla una organización lógica por:
+Marca
+  ↓
+Año
+  ↓
+Mes
+  ↓
+Responsable
+  ↓
+Material
+
+
+El sistema deberá conservar la relación con la solicitud/tarea cuando corresponda.
+________________
+
+
+40. MULTIMEDIA Y ENTREGABLES
+Las solicitudes relacionadas con producción multimedia podrán requerir información específica como:
+* cantidad;
+* tipo de pieza;
+* formato;
+* proporciones;
+* tiempo de desarrollo;
+* edición;
+* producción;
+* evidencias;
+* entregables.
+Los entregables podrán manejar versiones:
+V1
+V2
+V3
+FINAL
+
+
+La necesidad de implementar formalmente un modelo de versionamiento deberá quedar definida en la especificación funcional/técnica de cada área.
+________________
+
+
+41. COMERCIAL Y ADMINISTRACIÓN
+Comercial y Administración forman parte de la primera implementación funcional corporativa.
+No deben tratarse como extensiones de Marketing.
+Cada área tendrá sus propios:
+* tipos de solicitud;
+* formularios;
+* procesos;
+* responsables;
+* maestros;
+* indicadores;
+* necesidades operativas.
+El Core proporcionará los mecanismos comunes.
+________________
+
+
+42. PRIMERA FASE DE IMPLEMENTACIÓN FUNCIONAL
+La primera fase no debe consistir únicamente en desarrollar Marketing.
+La primera fase deberá demostrar el funcionamiento de la plataforma corporativa completa.
+Conceptualmente:
+CORE CORPORATIVO
+        +
+MÓDULO GERENCIAL
+        +
+MARKETING
+        +
+COMERCIAL
+        +
+ADMINISTRACIÓN
+        +
+RADICACIÓN TRANSVERSAL
+
+
+Esto permitirá demostrar desde el inicio:
+* solicitud interáreas;
+* origen;
+* destino;
+* radicación;
+* asignación;
+* ejecución;
+* entrega;
+* confirmación;
+* devoluciones;
+* trazabilidad;
+* tiempos;
+* indicadores;
+* administración;
+* modularidad.
+________________
+
+
+43. ESCALABILIDAD FUNCIONAL
+La plataforma deberá permitir incorporar nuevas áreas.
+La incorporación de una nueva área debería consistir conceptualmente en definir:
+Nueva área
+   ↓
+Tipos de solicitud
+   ↓
+Maestros específicos
+   ↓
+Campos específicos
+   ↓
+Procesos
+   ↓
+Roles/permisos
+   ↓
+Indicadores
+
+
+La funcionalidad de radicación transversal deberá mantenerse.
+El usuario simplemente podrá seleccionar la nueva área como destino cuando tenga permiso para hacerlo.
+________________
+
+
+44. PRINCIPIO DE MODULARIDAD
+Cada módulo funcional deberá permanecer aislado conceptualmente.
+Por ejemplo:
+Core
+├── Usuarios
+├── Roles
+├── Permisos
+├── Solicitudes
+├── Tareas
+├── Workflow
+├── Maestros
+└── Auditoría
+
+
+
+
+Marketing
+├── Contenidos
+├── Campañas
+├── Calendario
+├── Multimedia
+└── Equipos
+
+
+Comercial
+└── Funcionalidades comerciales
+Administración
+└── Funcionalidades administrativas
+
+
+Marketing no deberá convertirse en una dependencia obligatoria del Core.
+________________
+
+
+45. INFORMACIÓN QUE DEBE CONSERVARSE
+La plataforma deberá conservar trazabilidad histórica.
+Entre otros:
+* usuario;
+* área de origen;
+* área de destino;
+* fecha;
+* hora;
+* estado;
+* responsable;
+* cambios;
+* comentarios;
+* archivos;
+* evidencias;
+* tiempos;
+* entregas;
+* devoluciones;
+* confirmaciones.
+La modificación de información administrativa, como el nombre de un usuario, no deberá destruir la trazabilidad histórica.
+________________
+
+
+46. AUTOMATIZACIÓN
+Para la definición funcional actual de V1:
+No se establecen asignaciones automáticas ni cambios automáticos de estado.
+Las transiciones deberán ser realizadas por usuarios autorizados.
+El sistema deberá registrar:
+* quién realizó la acción;
+* cuándo;
+* qué acción realizó;
+* estado anterior;
+* estado nuevo;
+* información relacionada.
+Las posibilidades futuras de automatización podrán evaluarse posteriormente.
+________________
+
+
+47. NOTIFICACIONES
+La plataforma deberá contemplar notificaciones relacionadas con eventos relevantes.
+Ejemplos:
+* nueva solicitud;
+* asignación;
+* solicitud de información;
+* reenvío;
+* entrega;
+* devolución;
+* confirmación;
+* cambios relevantes.
+Los canales definitivos de notificación aún requieren definición.
+________________
+
+
+48. INTEGRACIONES Y ALMACENAMIENTO (DEFINICIÓN V1)
+Desde el punto de vista funcional se reconoce la necesidad de manejar archivos pesados y repositorios.
+Para la fase V1:
+* No se requerirá integración automática con la API de Google Drive.
+* La aplicación soportará el registro manual de enlaces de internet (Drive, repositorios externos, OneDrive, etc.).
+* La plataforma guardará y relacionará estructuradamente estos enlaces con la solicitud, sus mensajes y evidencias.
+* Las alternativas de automatización e integración directa vía API quedan diferidas para fases posteriores.
+________________
+
+
+49. SEPARACIÓN ENTRE DEFINICIÓN FUNCIONAL Y DESARROLLO
+Los siguientes temas deberán tratarse en el documento técnico:
+* arquitectura de software;
+* API;
+* ORM;
+* Prisma;
+* PostgreSQL;
+* estructura física de la base de datos;
+* módulos de código;
+* dependencias;
+* autenticación;
+* almacenamiento;
+* Google Drive API;
+* seguridad técnica;
+* migraciones;
+* despliegue;
+* infraestructura;
+* logs técnicos;
+* integraciones;
+* estrategia de pruebas;
+* CI/CD;
+* configuración de ambientes.
+La definición funcional determina qué debe hacer la plataforma.
+La definición técnica determinará cómo será implementado.
+________________
+
+
+50. PRISMA ORM Y ARQUITECTURA MODULAR
+Como consideración técnica ya identificada para desarrollo, se contempla el uso de Prisma ORM.
+La arquitectura deberá mantener separados:
+* modelos corporativos;
+* lógica del Core;
+* módulos funcionales;
+* infraestructura.
+El uso de Prisma deberá permitir trabajar con el modelo corporativo común sin convertir todos los modelos específicos de cada área en dependencias obligatorias.
+La estrategia concreta de carga, importación, generación de cliente y separación de módulos deberá definirse en el documento técnico.
+________________
+
+
+51. PRINCIPIO DE NO SOBRECARGAR EL CORE
+Una regla fundamental será:
+Si un concepto solamente existe porque un área específica lo necesita, no debe convertirse automáticamente en un concepto del Core Corporativo.
+Ejemplos de conceptos específicos de Marketing:
+* Instagram;
+* Facebook;
+* Reel;
+* Post;
+* Copy;
+* Campaña;
+* Calendario de contenido.
+Estos deben permanecer dentro de Marketing.
+El Core deberá manejar conceptos genéricos como:
+* solicitud;
+* tarea;
+* responsable;
+* estado;
+* archivo;
+* comentario;
+* entrega;
+* evidencia;
+* tiempo.
+________________
+
+
+52. ESTADO ACTUAL DE DEFINICIONES
+CONFIRMADO / DEFINIDO
+* Monte Azul Suite será una plataforma corporativa.
+* Core Corporativo no es un área.
+* Marketing, Comercial y Administración son áreas independientes.
+* Existirá un Módulo Gerencial transversal.
+* Existirá una funcionalidad transversal de Radicación de Solicitudes.
+* La radicación será controlada mediante permisos.
+* El usuario que radica debe definir el área de origen.
+* El usuario que radica debe definir el área de destino.
+* El área de destino será responsable de gestionar la solicitud.
+* No existe etapa de aceptación.
+* SOLICITADA/RECIBIDA se unifica conceptualmente en RADICADO.
+* El flujo estándar es RADICADO → ASIGNADO → EN PROCESO → ENTREGADO → CERRADO.
+* Existe flujo de revisión mediante EN REVISIÓN → REENVIADA.
+* Existe flujo de devolución mediante DEVUELTO → POR CONFIRMAR → CERRADO.
+* El tiempo principal de ejecución se mide durante EN PROCESO.
+* El tiempo de confirmación posterior a ENTREGADO no afecta el ciclo principal.
+* Las transiciones son realizadas por usuarios autorizados.
+* Todas las acciones deben conservar trazabilidad.
+* Existirá un Módulo de Maestros y Parámetros.
+* Los maestros utilizados históricamente no deberán eliminarse físicamente.
+* Los roles y permisos son independientes.
+* Se contempla acceso administrativo temporal.
+* La primera fase debe incluir el ecosistema corporativo mínimo y no solamente Marketing.
+* Prisma ORM es una consideración técnica para la implementación.
+* Los temas técnicos deben mantenerse separados del documento funcional.
+________________
+
+
+53. DOCUMENTADO DESDE LA ESPECIFICACIÓN DE MARKETING
+* Gestión de tareas.
+* Requerimientos.
+* Equipos.
+* Dashboard.
+* Calendario de Community.
+* Materiales de campaña.
+* Documentación de procesos.
+* Archivo de material producido.
+* Administración.
+* Gestión de marcas.
+* Proyectos.
+* Producción multimedia.
+* Evidencias.
+* Préstamo y devolución de equipos.
+* Fotografías antes/después.
+* Documentos PDF F-MKT-01 y F-MKT-02.
+* Exportación del calendario a Excel.
+* Google Drive como alternativa de almacenamiento.
+* Google Login como alternativa de autenticación.
+* Publicación automática en redes sociales fuera del alcance V1.
+* Chat interno fuera del alcance V1.
+* Aplicación móvil nativa fuera del alcance V1.
+* Trafficker y Admon pendientes de definición.
+________________
+
+
+54. PENDIENTES DE DEFINICIÓN FUNCIONAL
+Quedan pendientes, entre otros:
+1. Catálogo definitivo de áreas.
+2. Catálogo inicial de tipos de solicitudes por área.
+3. Campos específicos de cada área.
+4. Reglas exactas de los formularios dinámicos.
+5. Reglas para determinar cuándo una devolución genera una nueva solicitud.
+6. Escala definitiva de satisfacción.
+7. Comportamiento detallado ante satisfacción negativa.
+8. Consolidación de tiempos cuando existen múltiples ciclos EN PROCESO.
+9. Definición de SLA, si aplica.
+10. Reglas de prioridad.
+11. Visibilidad de comentarios internos.
+12. Canales definitivos de notificación.
+13. Alcance de los indicadores individuales.
+14. Visibilidad de indicadores por rol.
+15. Definición definitiva de Trafficker y Admon en Marketing.
+16. Alcance del calendario.+
+17. Integración definitiva con Google Drive.
+18. Estructura definitiva de almacenamiento.
+19. Reglas detalladas de versionamiento multimedia.
+20. Definición de tareas múltiples por solicitud.
+21. Reglas detalladas para administración temporal.
+22. Catálogo definitivo de permisos.
+________________
+
+
+55. CRITERIO PARA LAS SIGUIENTES ETAPAS
+Antes de iniciar el desarrollo completo se deberán producir dos documentos relacionados pero independientes:
+Documento 1 — Especificación Funcional
+Debe responder:
+¿Qué debe hacer Monte Azul Suite?
+
+
+Contendrá:
+* procesos;
+* usuarios;
+* roles;
+* permisos;
+* formularios;
+* estados;
+* reglas;
+* datos;
+* indicadores;
+* reportes;
+* módulos;
+* excepciones;
+* criterios de aceptación.
+Documento 2 — Especificación Técnica
+Debe responder:
+¿Cómo se construirá Monte Azul Suite?
+Contendrá:
+* arquitectura;
+* Prisma ORM;
+* PostgreSQL;
+* estructura de módulos;
+* API;
+* autenticación;
+* almacenamiento;
+* Google Drive;
+* seguridad;
+* infraestructura;
+* dependencias;
+* migraciones;
+* despliegue;
+* pruebas;
+* observabilidad;
+* estrategia de carga de módulos.
+________________
+
+
+56. PRINCIPIO GENERAL DEL PROYECTO
+Monte Azul Suite no debe entenderse como una aplicación de Marketing a la que posteriormente se le agregan otras áreas.
+Debe construirse desde el inicio como una plataforma corporativa modular, utilizando Marketing como una de las primeras implementaciones funcionales.
+
+
+La idea central es:
+CORE CORPORATIVO
+        │
+        ├───────────────┐
+        │                                 │
+RADICACIÓN         MÓDULO GERENCIAL
+TRANSVERSAL                      │
+        │                                      │
+        ├───────┬───────┴───────┐
+        │                  │                                       │
+    MARKETING COMERCIAL   ADMINISTRACIÓN
+        │                  │                                       │
+        └───────┴───────┬───────┘
+                                                 │
+                                 FUTURAS ÁREAS
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+La Radicación Transversal constituye el punto común de entrada al ecosistema interáreas.
+Cada solicitud deberá identificar claramente:
+RADICACIÓN
+   ├── Datos iniciales
+   ├── Área origen
+   ├── Área destino
+   ├── Tipo de solicitud
+   └── Información específica
+          ▼
+     SEGUIMIENTO          
+          ├── Mensajes
+          ├── Respuestas
+          ├── Archivos
+          ├── Enlaces Drive
+          ├── Evidencias
+          ├── Cambios de estado
+          └── Historial         
+          ▼
+       ENTREGA          
+          ▼
+      CONFIRMACIÓN          
+          ▼
+       CIERRE
+
+
+
+
+
+
+A partir de allí, el sistema utilizará las capacidades corporativas comunes y las particularidades funcionales del área de destino.
+________________
+
+
+57. DEFINICIÓN CLAVE CONSOLIDADA
+La regla funcional que queda establecida para la plataforma es:
+Toda solicitud radicada deberá identificar al usuario que la registra, el área de origen desde la cual se radica y el área de destino responsable de atenderla.
+La selección del área de destino determinará el contexto funcional de la solicitud y permitirá presentar los tipos de solicitud, opciones y campos específicos correspondientes a dicha área, de acuerdo con la configuración y permisos definidos.
+Esta definición permite que la plataforma sea verdaderamente transversal, manteniendo al mismo tiempo la independencia funcional de cada área.

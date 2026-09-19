@@ -1,36 +1,76 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Monte Azul Suite — Core Corporativo (`monteazul_core`)
 
-## Getting Started
+Plataforma corporativa transversal para la gestión, coordinación, trazabilidad y control de solicitudes, objetivos e interacciones operativas de Monte Azul.
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## 1. Arquitectura Tecnológica
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- **Framework:** [Next.js 16 (App Router)](https://nextjs.org) con soporte de compilación Turbopack y React 19.
+- **Base de Datos:** PostgreSQL con [Prisma ORM 7](https://www.prisma.io).
+- **Estilos e Interfaz:** [Tailwind CSS v4](https://tailwindcss.com) bajo lineamientos de diseño corporativo azul institucional.
+- **Autenticación:** [Auth.js / NextAuth v5](https://authjs.dev) con segregación estricta por roles y áreas.
+- **Navegación:** Panel lateral colapsable (Sidebar) adaptable a escritorio y dispositivos móviles.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 2. Estructura de Módulos
 
-## Learn More
+- **Core Corporativo de Solicitudes (`/requests`):**
+  - Bandeja unificada con filtros de estado, prioridad y trazabilidad.
+  - Radicación contextual transversal (`/requests/new`).
+  - Detalle de expediente con gestión de estados, comentarios auditables, evidencias y subtareas operativas (`/requests/[id]`).
+- **Estrategia y Gerencia (`/management` y `/goals`):**
+  - Tablero ejecutivo de cuellos de botella, balance de áreas y saturación operativa.
+  - Gestión de Objetivos de Área y Gerenciales con cálculo de avances e historial cronológico de auditoría.
+- **Áreas Funcionales:**
+  - Módulo de Marketing (`/marketing`): Tablero de requerimientos, calendario de contenidos (`/marketing/calendar`) e inventario y préstamos de equipos (`/marketing/equipment`).
+- **Configuración y Catálogos (`/masters`):**
+  - Administración de valores de catálogos maestros mediante submenús directos en el panel lateral de navegación.
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 3. Requisitos Previos e Instalación
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. **Clonar el repositorio:**
+   ```bash
+   git clone <URL_DEL_REPOSITORIO> monteazul_core
+   cd monteazul_core
+   ```
 
-## Deploy on Vercel
+2. **Instalar dependencias:**
+   ```bash
+   npm install
+   ```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+3. **Configurar variables de entorno:**
+   Copie el archivo `.env.example` a `.env`:
+   ```bash
+   cp .env.example .env
+   ```
+   Configure su cadena de conexión a PostgreSQL (`DATABASE_URL`) y clave de sesión (`AUTH_SECRET`).
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+4. **Sincronizar base de datos con Prisma:**
+   ```bash
+   npx prisma db push
+   ```
+
+5. **(Opcional) Cargar datos de prueba / demo:**
+   ```bash
+   npx tsx prisma/seed.ts
+   ```
+
+6. **Iniciar servidor de desarrollo:**
+   ```bash
+   npm run dev
+   ```
+   Acceda a `http://localhost:3000` en su navegador.
+
+---
+
+## 4. Scripts Disponibles
+
+- `npm run dev`: Inicia el servidor de desarrollo local con Turbopack.
+- `npm run build`: Compila la aplicación para producción.
+- `npm run start`: Inicia el servidor en modo de producción tras la compilación.
+- `npx prisma studio`: Abre la interfaz gráfica web de Prisma para inspeccionar la base de datos.

@@ -1,0 +1,435 @@
+// ============================================================
+// MONTE AZUL SUITE — CORPORATE CORE
+// Generic concepts only (no Marketing/Commercial/Administration-
+// specific fields). See document point 51: "if a concept only
+// exists because one area needs it, it must not become a Core
+// concept."
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  
+}
+
+// ------------------------------------------------------------
+// AREAS
+// ------------------------------------------------------------
+
+model Area {
+  id        String   @id @default(cuid())
+  name      String   @unique   // "Marketing", "Commercial", "Administration"
+  code      String   @unique   // "MKT", "COM", "ADM" — used to build ticket numbers
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  // Relations as origin/destination of a request
+  requestsAsOrigin      Request[] @relation("RequestOriginArea")
+  requestsAsDestination Request[] @relation("RequestDestinationArea")
+
+  // Users with operational access to this area (document point 8)
+  members   UserArea[]
+
+  // Area-specific master values (points 24-25)
+  masterValues MasterValue[]
+
+  // Objetivos asociados al área (punto 29)
+  goals        Goal[]
+}
+
+// ------------------------------------------------------------
+// USERS, ROLES AND PERMISSIONS
+// ------------------------------------------------------------
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String?             // null if the user only logs in via Google
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  roles        UserRole[]
+  areas        UserArea[]          // which areas this user has operational access to (can be none)
+
+  requestsFiled Request[] @relation("UserFiler")
+  assignments   Assignment[] @relation("UserAssignee")
+  tasksAssigned Task[] @relation("TaskAssignee")
+  comments      Comment[]
+  statusHistory StatusHistory[] @relation("UserStatusAction")
+
+  marketingContentsCreated  MarketingContent[] @relation("MarketingContentCreator")
+  marketingContentsAssigned MarketingContent[] @relation("MarketingContentAssignee")
+
+  equipmentLoansBorrower    EquipmentLoan[] @relation("EquipmentBorrower")
+  equipmentLoansAuthorized  EquipmentLoan[] @relation("EquipmentLoanAuthorizer")
+
+  goalsResponsible          Goal[] @relation("GoalResponsible")
+  goalsCreated              Goal[] @relation("GoalCreator")
+  goalProgressUpdates       GoalProgressUpdate[]
+}
+
+// A user's operational access to an area (independent from "can file requests")
+model UserArea {
+  id     String @id @default(cuid())
+  userId String
+  areaId String
+  user   User   @relation(fields: [userId], references: [id])
+  area   Area   @relation(fields: [areaId], references: [id])
+
+  @@unique([userId, areaId])
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique   // "Operator", "Area Director", "General Administrator"...
+  description String?
+  users       UserRole[]
+  permissions RolePermission[]
+}
+
+model UserRole {
+  id     String @id @default(cuid())
+  userId String
+  roleId String
+  user   User   @relation(fields: [userId], references: [id])
+  role   Role   @relation(fields: [roleId], references: [id])
+
+  @@unique([userId, roleId])
+}
+
+model Permission {
+  id    String @id @default(cuid())
+  key   String @unique  // "file_request", "view", "work_request", "assign",
+                          // "change_status", "manage_master_data", "executive_view", etc.
+  roles RolePermission[]
+}
+
+model RolePermission {
+  id           String     @id @default(cuid())
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id])
+  permission   Permission @relation(fields: [permissionId], references: [id])
+
+  @@unique([roleId, permissionId])
+}
+
+// ------------------------------------------------------------
+// REQUESTS (the core of the system — document points 7 and 57)
+// ------------------------------------------------------------
+
+enum RequestStatus {
+  FILED
+  ASSIGNED
+  IN_PROGRESS
+  IN_REVIEW
+  RESUBMITTED
+  DELIVERED
+  RETURNED
+  PENDING_CONFIRMATION
+  CLOSED
+}
+
+model Request {
+  id            String        @id @default(cuid())
+  ticketNumber  String        @unique   // e.g. "MKT-000123", built from the destination area's code
+
+  filedById     String
+  filedBy       User          @relation("UserFiler", fields: [filedById], references: [id])
+
+  originAreaId      String
+  originArea        Area      @relation("RequestOriginArea", fields: [originAreaId], references: [id])
+
+  destinationAreaId String
+  destinationArea   Area      @relation("RequestDestinationArea", fields: [destinationAreaId], references: [id])
+
+  type          String        // references a MasterValue (request type)
+  priority      String?       // references a MasterValue
+  title         String
+  description   String
+
+  status        RequestStatus @default(FILED)
+
+  filedAt       DateTime      @default(now())
+  dueDate       DateTime?
+
+  assignments   Assignment[]
+  statusHistory StatusHistory[]
+  comments      Comment[]
+  files         File[]
+  tasks         Task[]
+  marketingContents MarketingContent[]
+  equipmentLoans    EquipmentLoan[]
+
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+// Who ended up assigned to work the request (there can be more than one over time)
+model Assignment {
+  id           String   @id @default(cuid())
+  requestId    String
+  request      Request  @relation(fields: [requestId], references: [id])
+  userId       String
+  user         User     @relation("UserAssignee", fields: [userId], references: [id])
+  assignedById String
+  date         DateTime @default(now())
+}
+
+// Status transition log — this is what lets you measure time (points 17-19)
+model StatusHistory {
+  id             String         @id @default(cuid())
+  requestId      String
+  request        Request        @relation(fields: [requestId], references: [id])
+  previousStatus RequestStatus?
+  newStatus      RequestStatus
+  userId         String
+  user           User           @relation("UserStatusAction", fields: [userId], references: [id])
+  date           DateTime       @default(now())
+  note           String?        // e.g. reason for a return
+}
+
+// Work derived from a request (point 20).
+model Task {
+  id           String    @id @default(cuid())
+  requestId    String
+  request      Request   @relation(fields: [requestId], references: [id])
+  title        String
+  status       String    @default("pendiente") // "pendiente" | "en_proceso" | "completada"
+  assignedToId String?
+  assignedTo   User?     @relation("TaskAssignee", fields: [assignedToId], references: [id])
+  createdAt    DateTime  @default(now())
+  startedAt    DateTime?
+  completedAt  DateTime?
+  durationMs   Int       @default(0)
+
+  equipmentLoans EquipmentLoan[]
+}
+
+// ------------------------------------------------------------
+// CONTEXTUAL COMMUNICATION (point 22)
+// ------------------------------------------------------------
+
+model Comment {
+  id        String   @id @default(cuid())
+  requestId String
+  request   Request  @relation(fields: [requestId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  content   String
+  date      DateTime @default(now())
+
+  files     File[]
+}
+
+// Either a direct attachment OR an external link (Drive) — point 22.6
+model File {
+  id        String   @id @default(cuid())
+  requestId String?
+  request   Request? @relation(fields: [requestId], references: [id])
+  commentId String?
+  comment   Comment? @relation(fields: [commentId], references: [id])
+
+  type      String   // "attachment" | "link"
+  name      String
+  url       String   // storage path or Drive URL
+  createdAt DateTime @default(now())
+}
+
+// ------------------------------------------------------------
+// MASTER DATA (points 24-25)
+// ------------------------------------------------------------
+
+model MasterType {
+  id     String        @id @default(cuid())
+  key    String        @unique  // "request_type", "priority", "content_type"...
+  name   String
+  values MasterValue[]
+}
+
+model MasterValue {
+  id           String     @id @default(cuid())
+  masterTypeId String
+  masterType   MasterType @relation(fields: [masterTypeId], references: [id])
+  areaId       String?    // null = corporate master value; set = area-specific
+  area         Area?      @relation(fields: [areaId], references: [id])
+  value        String
+  active       Boolean    @default(true)
+
+  @@unique([masterTypeId, areaId, value])
+}
+
+// ============================================================
+// MARKETING FUNCTIONAL MODULE (points 32-36)
+// Specific to the Marketing area without overloading the corporate core
+// ============================================================
+
+model MarketingContent {
+  id           String    @id @default(cuid())
+  brand        String    // Marca (ej: "Monte Azul", "Monte Azul Inmobiliaria")
+  date         DateTime  // Fecha programada (año, mes, semana, día)
+  title        String    // Tema del contenido
+  format       String    // Formato: "Carrusel", "Reel / Video Corto", "Post Estático", "Historia", etc.
+  objective    String    // Objetivo: "Alcance", "Engagement", "Conversión", "Branding"
+  platforms    String    // Plataformas separadas por comas (ej: "Instagram, Facebook, TikTok")
+  copy         String?   @db.Text // Copywriting / caption
+  fileUrl      String?   // Enlace a archivos finales / Google Drive / OneDrive
+  thumbnailUrl String?   // Enlace a miniatura o previsualización
+  status       String    @default("Borrador") // "Borrador" | "En Producción" | "En Aprobación" | "Aprobado" | "Publicado" | "Cancelado"
+  notes        String?   @db.Text // Notas internas de producción
+
+  createdById  String
+  createdBy    User      @relation("MarketingContentCreator", fields: [createdById], references: [id])
+
+  assignedToId String?
+  assignedTo   User?     @relation("MarketingContentAssignee", fields: [assignedToId], references: [id])
+
+  requestId    String?   // Vinculación opcional con una solicitud del Core Corporativo
+  request      Request?  @relation(fields: [requestId], references: [id])
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([date])
+  @@index([status])
+  @@index([brand])
+}
+
+// ------------------------------------------------------------
+// MARKETING EQUIPMENT & LOANS (point 35, F-MKT-01, F-MKT-02)
+// ------------------------------------------------------------
+
+model Equipment {
+  id                String              @id @default(cuid())
+  code              String              @unique // "EQ-MKT-001"
+  name              String              // "Cámara Sony Alpha 7 IV"
+  category          String              // "Cámaras", "Lentes / Óptica", "Iluminación", "Audio", "Drones", "Estabilizadores / Trípodes", "Accesorios"
+  brand             String              // "Sony", "DJI", "Rode", "Godox"
+  model             String?
+  serialNumber      String?
+  status            String              @default("Disponible") // "Disponible" | "Prestado" | "En Mantenimiento" | "Baja"
+  physicalCondition String              @default("Excelente") // "Excelente" | "Bueno" | "Regular" | "Con detalles"
+  location          String?             // "Armario Audiovisual Marketing - Estante 2"
+  accessories       String?             // "2 baterías, cargador, estuche rígido, tarjeta SD 128GB"
+  photoUrl          String?
+  notes             String?
+
+  loanItems         EquipmentLoanItem[]
+
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  @@index([status])
+  @@index([category])
+}
+
+model EquipmentLoan {
+  id                 String              @id @default(cuid())
+  folio              String              @unique // "PREST-MKT-000001"
+  purpose            String              // Motivo / Salida a campo / Proyecto
+  startDate          DateTime            // Fecha y hora de salida / entrega
+  expectedReturnDate DateTime            // Fecha y hora comprometida de devolución
+  actualReturnDate   DateTime?           // Fecha y hora real de devolución
+  status             String              @default("Solicitado") // "Solicitado" | "Aprobado" | "Entregado" | "Devuelto" | "Devuelto con Novedad" | "Rechazado"
+
+  borrowerId         String
+  borrower           User                @relation("EquipmentBorrower", fields: [borrowerId], references: [id])
+
+  authorizedById     String?
+  authorizedBy       User?               @relation("EquipmentLoanAuthorizer", fields: [authorizedById], references: [id])
+
+  taskId             String?
+  task               Task?               @relation(fields: [taskId], references: [id])
+
+  requestId          String?
+  request            Request?            @relation(fields: [requestId], references: [id])
+
+  departureNotes     String?             // Observaciones en la entrega inicial
+  departurePhotoUrl  String?             // Fotos antes de la entrega (F-MKT-01)
+  returnNotes        String?             // Observaciones en la recepción/devolución
+  returnPhotoUrl     String?             // Fotos al devolver (F-MKT-02)
+
+  items              EquipmentLoanItem[]
+
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  @@index([status])
+  @@index([borrowerId])
+}
+
+model EquipmentLoanItem {
+  id                   String        @id @default(cuid())
+  loanId               String
+  loan                 EquipmentLoan @relation(fields: [loanId], references: [id], onDelete: Cascade)
+
+  equipmentId          String
+  equipment            Equipment     @relation(fields: [equipmentId], references: [id])
+
+  conditionAtDeparture String?       // Condición física al entregar
+  conditionAtReturn    String?       // Condición física al recibir
+  notes                String?
+
+  @@unique([loanId, equipmentId])
+}
+
+// ============================================================
+// CORPORATE AND AREA GOALS & OBJECTIVES (point 29)
+// ============================================================
+
+model Goal {
+  id           String    @id @default(cuid())
+  title        String    // Título del objetivo
+  description  String?   // Descripción detallada / Justificación
+  scope        String    // "Gerencial" | "Área"
+  horizon      String    // "Corto Plazo" | "Mediano Plazo" | "Largo Plazo"
+  period       String    // Período de evaluación (ej: "Q1 2026", "Año 2026")
+  startDate    DateTime  // Inicio de medición
+  endDate      DateTime  // Fecha límite de cumplimiento
+
+  indicator    String    // Indicador o métrica asociada
+  targetValue  Float     // Meta cuantitativa (ej: 95, 24, 30)
+  currentValue Float     @default(0) // Valor actual alcanzado
+  unit         String    // Unidad de medida (ej: "%", "horas", "solicitudes", "publicaciones")
+  status       String    @default("En Curso") // "En Curso" | "Cumplido" | "En Riesgo" | "No Cumplido" | "Pausado"
+
+  areaId       String?   // null = Corporativo / Gerencial; set = Específico de un Área
+  area         Area?     @relation(fields: [areaId], references: [id])
+
+  responsibleId String   // Director o Gerente responsable del cumplimiento
+  responsible   User     @relation("GoalResponsible", fields: [responsibleId], references: [id])
+
+  createdById   String
+  createdBy     User     @relation("GoalCreator", fields: [createdById], references: [id])
+
+  progressUpdates GoalProgressUpdate[]
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([scope])
+  @@index([status])
+  @@index([areaId])
+}
+
+model GoalProgressUpdate {
+  id            String   @id @default(cuid())
+  goalId        String
+  goal          Goal     @relation(fields: [goalId], references: [id], onDelete: Cascade)
+
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+
+  previousValue Float
+  newValue      Float
+  note          String   // Justificación o resumen del avance registrado
+
+  createdAt     DateTime @default(now())
+}
+
+
+
