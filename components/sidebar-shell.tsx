@@ -113,6 +113,22 @@ function IconLayoutGrid({ className = "w-5 h-5" }: { className?: string }) {
   );
 }
 
+function IconUsers({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+    </svg>
+  );
+}
+
+function IconShield({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+    </svg>
+  );
+}
+
 function IconChevronDown({ className = "w-4 h-4" }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -181,6 +197,7 @@ export default function SidebarShell({
 }: SidebarShellProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const currentTab = searchParams.get("tab") || "catalogs";
   const currentMasterType = searchParams.get("type") || "all";
 
   // Estado del sidebar: colapsado (modo mini) o expandido
@@ -196,7 +213,6 @@ export default function SidebarShell({
   const [managementOpen, setManagementOpen] = useState<boolean>(true);
 
   // Acordeón de Datos Maestros: abierto por defecto si estamos en masters
-  const isMastersActive = pathname.startsWith("/masters");
   const [mastersOpen, setMastersOpen] = useState<boolean>(true);
 
   // Sincronizar estado cuando cambia la ruta (patrón recomendado de React sin useEffect)
@@ -508,90 +524,130 @@ export default function SidebarShell({
             </div>
           )}
 
-          {/* GRUPO 4: CONFIGURACIÓN Y CATÁLOGOS */}
+          {/* GRUPO 4: CONFIGURACIÓN Y ADMINISTRACIÓN */}
           {permissions.canAccessMasters && (
             <div>
               {!isCollapsed ? (
                 <div className="flex items-center justify-between px-3 pb-1">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-blue-900/80">
-                    Configuración
+                    Configuración y Maestros
                   </span>
                 </div>
               ) : (
                 <div className="w-full h-px bg-blue-200 my-2" />
               )}
 
-              {/* Acordeón de Datos Maestros */}
               <div className="space-y-1">
-                {!isCollapsed ? (
-                  <button
-                    type="button"
-                    onClick={() => setMastersOpen(!mastersOpen)}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all text-slate-800 hover:bg-blue-100/80 ${
-                      isMastersActive ? "bg-blue-100/90 text-blue-950 font-bold" : ""
-                    }`}
+                {/* OPCIÓN 1: USUARIOS Y DELEGACIÓN (Exclusivo Administradores) */}
+                {permissions.isGeneralAdmin && (
+                  <Link
+                    href="/masters?tab=users"
+                    title={isCollapsed ? "Usuarios y Delegación de Actividades" : undefined}
+                    className={`flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
+                      pathname === "/masters" && currentTab === "users"
+                        ? "bg-blue-700 text-white shadow-xs"
+                        : "text-slate-700 hover:bg-blue-100/80 hover:text-blue-950"
+                    } ${isCollapsed ? "justify-center px-2" : ""}`}
                   >
-                    <div className="flex items-center gap-2.5 truncate">
-                      <IconDatabase className="w-4 h-4 text-blue-700 shrink-0" />
-                      <span className="truncate">Datos Maestros</span>
-                    </div>
-                    {mastersOpen ? (
-                      <IconChevronDown className="w-3.5 h-3.5 text-blue-800" />
-                    ) : (
-                      <IconChevronRight className="w-3.5 h-3.5 text-blue-800" />
+                    <IconUsers className="w-4 h-4 shrink-0" />
+                    {!isCollapsed && <span className="truncate">Usuarios y Delegación</span>}
+                  </Link>
+                )}
+
+                {/* OPCIÓN 2: ROLES Y VISTAS PERMITIDAS (Exclusivo Administradores) */}
+                {permissions.isGeneralAdmin && (
+                  <Link
+                    href="/masters?tab=roles"
+                    title={isCollapsed ? "Roles y Matriz de Permisos" : undefined}
+                    className={`flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
+                      pathname === "/masters" && currentTab === "roles"
+                        ? "bg-blue-700 text-white shadow-xs"
+                        : "text-slate-700 hover:bg-blue-100/80 hover:text-blue-950"
+                    } ${isCollapsed ? "justify-center px-2" : ""}`}
+                  >
+                    <IconShield className="w-4 h-4 shrink-0" />
+                    {!isCollapsed && <span className="truncate">Roles y Permisos</span>}
+                  </Link>
+                )}
+
+                {/* OPCIÓN 3: CATÁLOGOS Y LISTAS MAESTRAS */}
+                {!isCollapsed ? (
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => setMastersOpen(!mastersOpen)}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all text-slate-800 hover:bg-blue-100/80 ${
+                        pathname === "/masters" && currentTab === "catalogs"
+                          ? "bg-blue-100/90 text-blue-950 font-bold"
+                          : ""
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 truncate">
+                        <IconDatabase className="w-4 h-4 text-blue-700 shrink-0" />
+                        <span className="truncate">Catálogos y Listas</span>
+                      </div>
+                      {mastersOpen ? (
+                        <IconChevronDown className="w-3.5 h-3.5 text-blue-800" />
+                      ) : (
+                        <IconChevronRight className="w-3.5 h-3.5 text-blue-800" />
+                      )}
+                    </button>
+
+                    {mastersOpen && (
+                      <div className="pl-4 ml-2 border-l border-blue-200 space-y-1 pt-1">
+                        <Link
+                          href="/masters?tab=catalogs"
+                          className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
+                            pathname === "/masters" &&
+                            currentTab === "catalogs" &&
+                            currentMasterType === "all"
+                              ? "bg-blue-700 text-white font-bold shadow-xs"
+                              : "text-slate-700 hover:bg-blue-100/80 hover:text-blue-950"
+                          }`}
+                        >
+                          <IconLayoutGrid className="w-3.5 h-3.5 shrink-0" />
+                          <span className="truncate">Todos los Catálogos</span>
+                        </Link>
+
+                        {masterTypes.map((mt) => {
+                          const isSelected =
+                            pathname === "/masters" &&
+                            currentTab === "catalogs" &&
+                            currentMasterType === mt.key;
+                          return (
+                            <Link
+                              key={mt.id}
+                              href={`/masters?tab=catalogs&type=${encodeURIComponent(mt.key)}`}
+                              className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
+                                isSelected
+                                  ? "bg-blue-700 text-white font-bold shadow-xs"
+                                  : "text-slate-700 hover:bg-blue-100/80 hover:text-blue-950"
+                              }`}
+                            >
+                              <span
+                                className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                                  isSelected ? "bg-white" : "bg-blue-600"
+                                }`}
+                              />
+                              <span className="truncate">{mt.name}</span>
+                            </Link>
+                          );
+                        })}
+                      </div>
                     )}
-                  </button>
+                  </div>
                 ) : (
                   <Link
-                    href="/masters"
-                    title="Administración de Datos Maestros"
+                    href="/masters?tab=catalogs"
+                    title="Catálogos y Datos Maestros"
                     className={`flex items-center justify-center p-2 rounded-lg text-xs font-semibold transition-all ${
-                      isMastersActive
+                      pathname === "/masters" && currentTab === "catalogs"
                         ? "bg-blue-700 text-white shadow-xs"
                         : "text-slate-700 hover:bg-blue-100/80 hover:text-blue-950"
                     }`}
                   >
                     <IconDatabase className="w-4 h-4" />
                   </Link>
-                )}
-
-                {/* Submenús de Catálogos desplegables */}
-                {(!isCollapsed ? mastersOpen : false) && (
-                  <div className="pl-4 ml-2 border-l border-blue-200 space-y-1 pt-1">
-                    <Link
-                      href="/masters"
-                      className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
-                        pathname === "/masters" && currentMasterType === "all"
-                          ? "bg-blue-700 text-white font-bold shadow-xs"
-                          : "text-slate-700 hover:bg-blue-100/80 hover:text-blue-950"
-                      }`}
-                    >
-                      <IconLayoutGrid className="w-3.5 h-3.5 shrink-0" />
-                      <span className="truncate">Todos los Catálogos</span>
-                    </Link>
-
-                    {masterTypes.map((mt) => {
-                      const isSelected = pathname === "/masters" && currentMasterType === mt.key;
-                      return (
-                        <Link
-                          key={mt.id}
-                          href={`/masters?type=${encodeURIComponent(mt.key)}`}
-                          className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
-                            isSelected
-                              ? "bg-blue-700 text-white font-bold shadow-xs"
-                              : "text-slate-700 hover:bg-blue-100/80 hover:text-blue-950"
-                          }`}
-                        >
-                          <span
-                            className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                              isSelected ? "bg-white" : "bg-blue-600"
-                            }`}
-                          />
-                          <span className="truncate">{mt.name}</span>
-                        </Link>
-                      );
-                    })}
-                  </div>
                 )}
               </div>
             </div>
