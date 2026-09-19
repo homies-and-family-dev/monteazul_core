@@ -268,21 +268,37 @@ export default function SidebarShell({
         <div className="h-16 px-4 flex items-center justify-between border-b border-blue-200 bg-white/90">
           <Link
             href="/requests"
-            className={`flex items-center gap-3 overflow-hidden ${
+            className={`flex items-center gap-2.5 overflow-hidden ${
               isCollapsed ? "justify-center w-full" : ""
             }`}
           >
-            <div className="w-9 h-9 shrink-0 rounded-lg bg-blue-700 text-white flex items-center justify-center font-bold text-sm shadow-xs">
-              MA
-            </div>
-            {!isCollapsed && (
-              <div className="leading-tight truncate">
-                <span className="font-bold text-sm text-blue-950 block truncate">
-                  Monte Azul Suite
-                </span>
-                <span className="text-[10px] text-blue-800 font-medium block truncate">
-                  Core Corporativo
-                </span>
+            {isCollapsed ? (
+              <div className="w-10 h-10 shrink-0 rounded-lg bg-white border border-blue-200 flex items-center justify-center p-1 shadow-2xs">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/logos/logo-monteazul.jpg"
+                  alt="Monteazul"
+                  className="h-6 w-auto object-contain"
+                />
+              </div>
+            ) : (
+              <div className="flex items-center gap-2.5 overflow-hidden">
+                <div className="h-10 px-2 rounded-lg bg-white border border-blue-200 flex items-center justify-center shadow-2xs shrink-0">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/logos/logo-monteazul.jpg"
+                    alt="Monteazul Group"
+                    className="h-7 w-auto object-contain"
+                  />
+                </div>
+                <div className="leading-tight truncate">
+                  <span className="font-bold text-xs text-blue-950 block truncate">
+                    Core Corporativo
+                  </span>
+                  <span className="text-[10px] text-blue-800 font-medium block truncate">
+                    Monte Azul Suite
+                  </span>
+                </div>
               </div>
             )}
           </Link>

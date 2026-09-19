@@ -17,6 +17,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Monte Azul Suite — Core Corporativo de Solicitudes",
   description: "Plataforma Corporativa de Gestión, Coordinación y Seguimiento de Solicitudes y Operaciones Internas",
+  icons: {
+    icon: "/logos/logo-monteazul.jpg",
+  },
 };
 
 export default function RootLayout({

@@ -41,16 +41,23 @@ export default function LoginPage() {
   return (
     <div className="bg-white min-h-screen flex items-center justify-center px-4 py-8">
       <div className="w-full max-w-lg space-y-5 bg-blue-50/70 p-7 rounded-2xl border border-blue-200 shadow-sm">
-        <div className="text-center space-y-1.5">
-          <div className="inline-flex w-12 h-12 rounded-xl bg-blue-700 text-white items-center justify-center font-bold text-lg shadow-sm">
-            MA
+        <div className="text-center space-y-2">
+          <div className="inline-flex items-center justify-center p-3 bg-white rounded-2xl border border-blue-200 shadow-2xs">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/logos/logo-monteazul.jpg"
+              alt="Monteazul Group"
+              className="h-12 w-auto object-contain"
+            />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-blue-950">
-            Monte Azul Suite
-          </h1>
-          <p className="text-xs text-slate-600">
-            Plataforma Corporativa de Solicitudes y Operaciones
-          </p>
+          <div>
+            <h1 className="text-xl font-bold tracking-tight text-blue-950">
+              Monte Azul Suite
+            </h1>
+            <p className="text-xs text-slate-600">
+              Plataforma Corporativa de Solicitudes y Operaciones
+            </p>
+          </div>
         </div>
 
         {error && (

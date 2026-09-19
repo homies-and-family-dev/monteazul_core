@@ -376,13 +376,16 @@ export default function ActaDocumentView({
         {/* Encabezado Oficial Institucional */}
         <div className="border-b-2 border-blue-950 pb-5">
           <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3.5">
-              <div className="w-12 h-12 rounded-xl bg-blue-900 text-white flex items-center justify-center font-black text-lg shadow-xs print:border print:border-blue-950">
-                MA
-              </div>
-              <div>
+            <div className="flex items-center gap-4">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/logos/logo-monteazul.jpg"
+                alt="Monteazul Group"
+                className="h-14 w-auto object-contain shrink-0"
+              />
+              <div className="border-l-2 border-slate-300 pl-4">
                 <h1 className="text-base sm:text-lg font-black tracking-tight text-blue-950 leading-tight">
-                  MONTEAZUL LOGÍSTICA & PRODUCCIÓN AUDIOVISUAL
+                  LOGÍSTICA & PRODUCCIÓN AUDIOVISUAL
                 </h1>
                 <span className="text-xs text-slate-600 font-bold block uppercase tracking-wide">
                   Área de Marketing y Comunicaciones Institucionales
@@ -687,8 +690,14 @@ export default function ActaDocumentView({
                           />
                         </div>
                       ) : (
-                        <div className="py-1 px-2.5 rounded bg-white/80 border border-emerald-300 font-mono text-[10px] text-emerald-900 font-semibold text-center">
-                          SELLO DIGITAL CERTIFICADO MONTEAZUL
+                        <div className="py-1 px-2.5 rounded bg-white/90 border border-emerald-400 font-mono text-[10px] text-emerald-900 font-bold text-center flex items-center justify-center gap-1.5 shadow-2xs">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src="/logos/logo-monteazul.jpg"
+                            alt="Monteazul"
+                            className="h-3.5 w-auto object-contain shrink-0"
+                          />
+                          <span>SELLO DIGITAL CERTIFICADO</span>
                         </div>
                       )}
                       <div className="text-[11px] text-slate-800 text-center font-bold">
@@ -766,8 +775,14 @@ export default function ActaDocumentView({
                           />
                         </div>
                       ) : (
-                        <div className="py-1 px-2.5 rounded bg-white/80 border border-emerald-300 font-mono text-[10px] text-emerald-900 font-semibold text-center">
-                          SELLO DIGITAL CERTIFICADO MONTEAZUL
+                        <div className="py-1 px-2.5 rounded bg-white/90 border border-emerald-400 font-mono text-[10px] text-emerald-900 font-bold text-center flex items-center justify-center gap-1.5 shadow-2xs">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src="/logos/logo-monteazul.jpg"
+                            alt="Monteazul"
+                            className="h-3.5 w-auto object-contain shrink-0"
+                          />
+                          <span>SELLO DIGITAL CERTIFICADO</span>
                         </div>
                       )}
                       <div className="text-[11px] text-slate-800 text-center font-bold">
@@ -848,8 +863,14 @@ export default function ActaDocumentView({
                           />
                         </div>
                       ) : (
-                        <div className="py-1 px-2.5 rounded bg-white/80 border border-emerald-300 font-mono text-[10px] text-emerald-900 font-semibold text-center">
-                          SELLO DIGITAL CERTIFICADO MONTEAZUL
+                        <div className="py-1 px-2.5 rounded bg-white/90 border border-emerald-400 font-mono text-[10px] text-emerald-900 font-bold text-center flex items-center justify-center gap-1.5 shadow-2xs">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src="/logos/logo-monteazul.jpg"
+                            alt="Monteazul"
+                            className="h-3.5 w-auto object-contain shrink-0"
+                          />
+                          <span>SELLO DIGITAL CERTIFICADO</span>
                         </div>
                       )}
                       <div className="text-[11px] text-slate-800 text-center font-bold">
@@ -927,8 +948,14 @@ export default function ActaDocumentView({
                           />
                         </div>
                       ) : (
-                        <div className="py-1 px-2.5 rounded bg-white/80 border border-emerald-300 font-mono text-[10px] text-emerald-900 font-semibold text-center">
-                          SELLO DIGITAL CERTIFICADO MONTEAZUL
+                        <div className="py-1 px-2.5 rounded bg-white/90 border border-emerald-400 font-mono text-[10px] text-emerald-900 font-bold text-center flex items-center justify-center gap-1.5 shadow-2xs">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src="/logos/logo-monteazul.jpg"
+                            alt="Monteazul"
+                            className="h-3.5 w-auto object-contain shrink-0"
+                          />
+                          <span>SELLO DIGITAL CERTIFICADO</span>
                         </div>
                       )}
                       <div className="text-[11px] text-slate-800 text-center font-bold">
@@ -1069,8 +1096,13 @@ export default function ActaDocumentView({
 
               {signatureType === "seal" ? (
                 <div className="p-4 rounded-xl border-2 border-emerald-400 bg-emerald-50/50 text-center space-y-2">
-                  <div className="inline-block p-2 rounded-full bg-emerald-600 text-white font-bold text-sm">
-                    ✓
+                  <div className="inline-flex items-center justify-center p-2 rounded-xl bg-white border border-emerald-300 shadow-2xs">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src="/logos/logo-monteazul.jpg"
+                      alt="Monteazul Group"
+                      className="h-7 w-auto object-contain"
+                    />
                   </div>
                   <div className="font-black text-xs text-emerald-950 uppercase tracking-wide">
                     Sello Digital Cero Papel Monteazul

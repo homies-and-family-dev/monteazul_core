@@ -1524,12 +1524,15 @@ export default function EquipmentView({
             {/* Encabezado del Acta */}
             <div className="flex items-center justify-between border-b-2 border-blue-950 pb-4">
               <div className="flex items-center gap-3">
-                <span className="w-10 h-10 rounded-lg bg-blue-700 text-white flex items-center justify-center font-bold text-sm">
-                  MA
-                </span>
-                <div>
-                  <h2 className="text-base font-bold text-blue-950">
-                    MONTE AZUL SUITE — GESTIÓN AUDIOVISUAL
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/logos/logo-monteazul.jpg"
+                  alt="Monteazul Group"
+                  className="h-10 w-auto object-contain shrink-0"
+                />
+                <div className="border-l border-slate-300 pl-3">
+                  <h2 className="text-sm font-bold text-blue-950 leading-tight">
+                    GESTIÓN AUDIOVISUAL — ACTA OFICIAL
                   </h2>
                   <span className="text-[11px] text-slate-600 font-semibold block">
                     Área de Marketing y Comunicaciones
