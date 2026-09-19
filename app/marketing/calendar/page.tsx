@@ -50,8 +50,7 @@ export default async function MarketingCalendarPage() {
 
   const canAccessCalendar =
     isGeneralAdmin ||
-    permissionsList.includes("marketing:calendar") ||
-    (isMarketingMember && !isOtherAreaDirector);
+    permissionsList.includes("marketing:calendar");
 
   // Validación de acceso al Módulo Especializado de Marketing (Puntos 32-36)
   if (!canAccessCalendar) {

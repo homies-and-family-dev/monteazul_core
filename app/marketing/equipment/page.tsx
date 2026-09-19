@@ -50,8 +50,7 @@ export default async function EquipmentPage() {
 
   const canAccessEquipment =
     isGeneralAdmin ||
-    permissionsList.includes("marketing:equipment") ||
-    (isMarketingMember && !isOtherAreaDirector);
+    permissionsList.includes("marketing:equipment");
 
   // Verificación de acceso al Módulo Especializado de Marketing (Puntos 32-35)
   if (!canAccessEquipment) {
@@ -62,7 +61,7 @@ export default async function EquipmentPage() {
             Acceso Restringido al Módulo de Equipos
           </h2>
           <p className="text-xs text-slate-700 leading-relaxed">
-            El control de inventario y préstamo de equipos audiovisuales de Marketing está reservado para el personal del área de Marketing y la Dirección General.
+            El control de inventario y préstamo de equipos audiovisuales de Marketing requiere el permiso correspondiente en la matriz de roles o pertenecer a la Dirección General.
           </p>
           <div>
             <Link
@@ -102,16 +101,9 @@ export default async function EquipmentPage() {
     orderBy: { createdAt: "desc" },
   });
 
-  // Usuarios del área de Marketing
-  const marketingUsers = await prisma.user.findMany({
-    where: {
-      active: true,
-      areas: {
-        some: {
-          area: { name: "Marketing" },
-        },
-      },
-    },
+  // Usuarios activos seleccionables como custodio / solicitante
+  const selectableUsers = await prisma.user.findMany({
+    where: { active: true },
     select: { id: true, name: true, email: true },
     orderBy: { name: "asc" },
   });
@@ -162,9 +154,9 @@ export default async function EquipmentPage() {
         <EquipmentView
           initialEquipment={equipment}
           initialLoans={loans}
-          marketingUsers={marketingUsers}
+          marketingUsers={selectableUsers}
           coreRequests={coreRequests}
-          canManage={isGeneralAdmin || isMarketingMember}
+          canManage={isGeneralAdmin || permissionsList.includes("marketing:equipment")}
           currentUserId={session.user.id}
         />
       </div>

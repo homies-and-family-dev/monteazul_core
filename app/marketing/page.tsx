@@ -58,11 +58,16 @@ export default async function MarketingPage() {
 
   const canAccessMarketing =
     isGeneralAdmin ||
-    permissionsList.includes("marketing:view") ||
-    (isMarketingMember && !isOtherAreaDirector);
+    permissionsList.includes("marketing:view");
 
   // Validación de acceso al Módulo Especializado de Marketing
   if (!canAccessMarketing) {
+    if (permissionsList.includes("marketing:equipment")) {
+      redirect("/marketing/equipment");
+    }
+    if (permissionsList.includes("marketing:calendar")) {
+      redirect("/marketing/calendar");
+    }
     return (
       <div className="bg-white min-h-screen flex items-center justify-center p-6">
         <div className="max-w-md w-full p-6 rounded-xl border border-blue-200 bg-blue-50/70 shadow-sm text-center space-y-4">

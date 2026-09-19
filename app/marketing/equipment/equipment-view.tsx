@@ -102,6 +102,7 @@ export default function EquipmentView({
   marketingUsers,
   coreRequests,
   canManage,
+  currentUserId,
 }: Props) {
   const [activeTab, setActiveTab] = useState<"inventory" | "activeLoans" | "history">("inventory");
 
@@ -239,7 +240,7 @@ export default function EquipmentView({
 
   const openLoanModal = () => {
     setLoanPurpose("");
-    setLoanBorrowerId(marketingUsers[0]?.id || "");
+    setLoanBorrowerId(currentUserId || marketingUsers[0]?.id || "");
     setLoanStartDate(new Date().toISOString().slice(0, 10));
     setLoanStartTime("08:30");
     setLoanExpectedReturnDate(new Date().toISOString().slice(0, 10));

@@ -477,8 +477,14 @@ export default function SidebarShell({
                   </button>
                 ) : (
                   <Link
-                    href="/marketing"
-                    title="Área de Marketing (Campañas)"
+                    href={
+                      (permissions.canAccessMarketingCampaigns ?? true)
+                        ? "/marketing"
+                        : (permissions.canAccessMarketingCalendar ?? true)
+                        ? "/marketing/calendar"
+                        : "/marketing/equipment"
+                    }
+                    title="Área de Marketing"
                     className={`flex items-center justify-center p-2 rounded-lg text-xs font-semibold transition-all ${
                       isMarketingActive
                         ? "bg-blue-700 text-white shadow-xs"

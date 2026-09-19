@@ -78,21 +78,18 @@ export default async function AppLayout({
     permissionsList.includes("masters:manage_roles");
 
   // Capacidades operativas de Marketing:
-  // Directores de otras áreas (ej. Director Comercial) NO ven Marketing a menos que se les otorgue permiso explícito
+  // Control estricto por permisos de rol configurados en el sistema (directores y operarios)
   const canAccessMarketingCampaigns =
     isGeneralAdmin ||
-    permissionsList.includes("marketing:view") ||
-    (isMarketingMember && !isOtherAreaDirector);
+    permissionsList.includes("marketing:view");
 
   const canAccessMarketingCalendar =
     isGeneralAdmin ||
-    permissionsList.includes("marketing:calendar") ||
-    (isMarketingMember && !isOtherAreaDirector);
+    permissionsList.includes("marketing:calendar");
 
   const canAccessMarketingEquipment =
     isGeneralAdmin ||
-    permissionsList.includes("marketing:equipment") ||
-    (isMarketingMember && !isOtherAreaDirector);
+    permissionsList.includes("marketing:equipment");
 
   const canAccessMarketing =
     canAccessMarketingCampaigns ||

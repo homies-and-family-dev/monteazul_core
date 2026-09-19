@@ -31,11 +31,28 @@ async function main() {
     create: { name: "Administración", code: "ADM" },
   });
 
-  // --- Roles ---------------------------------------------------
   const rolOperador = await prisma.role.upsert({
     where: { name: "Operador" },
     update: {},
-    create: { name: "Operador", description: "Trabaja solicitudes asignadas a su área" },
+    create: { name: "Operador", description: "Rol base de operador para solicitudes de área" },
+  });
+
+  const rolOperadorComercial = await prisma.role.upsert({
+    where: { name: "Operador Comercial" },
+    update: {},
+    create: { name: "Operador Comercial", description: "Operaciones comerciales, trámite de propuestas y atención de requerimientos de ventas" },
+  });
+
+  const rolOperadorMkt = await prisma.role.upsert({
+    where: { name: "Operador de Marketing" },
+    update: {},
+    create: { name: "Operador de Marketing", description: "Operaciones de mercadeo, producción audiovisual y gestión de equipos e inventarios" },
+  });
+
+  const rolOperadorAdm = await prisma.role.upsert({
+    where: { name: "Operador de Administración" },
+    update: {},
+    create: { name: "Operador de Administración", description: "Operaciones administrativas, financieras y trámite de requerimientos internos" },
   });
 
   const rolDirector = await prisma.role.upsert({
@@ -223,13 +240,41 @@ async function main() {
     });
   }
 
-  // Vincular permisos a Operador
+  // Vincular permisos a Operador Base
   const operadorKeys = ["requests:view", "requests:create", "requests:work", "requests:subtasks"];
   for (const p of dbPermissions.filter((item) => operadorKeys.includes(item.key))) {
     await prisma.rolePermission.upsert({
       where: { roleId_permissionId: { roleId: rolOperador.id, permissionId: p.id } },
       update: {},
       create: { roleId: rolOperador.id, permissionId: p.id },
+    });
+  }
+
+  // Vincular permisos a Operador Comercial (Base)
+  for (const p of dbPermissions.filter((item) => operadorKeys.includes(item.key))) {
+    await prisma.rolePermission.upsert({
+      where: { roleId_permissionId: { roleId: rolOperadorComercial.id, permissionId: p.id } },
+      update: {},
+      create: { roleId: rolOperadorComercial.id, permissionId: p.id },
+    });
+  }
+
+  // Vincular permisos a Operador de Administración (Base)
+  for (const p of dbPermissions.filter((item) => operadorKeys.includes(item.key))) {
+    await prisma.rolePermission.upsert({
+      where: { roleId_permissionId: { roleId: rolOperadorAdm.id, permissionId: p.id } },
+      update: {},
+      create: { roleId: rolOperadorAdm.id, permissionId: p.id },
+    });
+  }
+
+  // Vincular permisos a Operador de Marketing (Base + Inventario de Equipos!)
+  const operadorMktKeys = [...operadorKeys, "marketing:equipment"];
+  for (const p of dbPermissions.filter((item) => operadorMktKeys.includes(item.key))) {
+    await prisma.rolePermission.upsert({
+      where: { roleId_permissionId: { roleId: rolOperadorMkt.id, permissionId: p.id } },
+      update: {},
+      create: { roleId: rolOperadorMkt.id, permissionId: p.id },
     });
   }
 
@@ -264,7 +309,7 @@ async function main() {
       name: "Operador de Marketing",
       email: "operador.marketing@monteazul.com",
       passwordHash,
-      roles: { create: [{ roleId: rolOperador.id }] },
+      roles: { create: [{ roleId: rolOperadorMkt.id }] },
       areas: { create: [{ areaId: marketing.id }] },
     },
   });
@@ -288,7 +333,7 @@ async function main() {
       name: "Operador Comercial",
       email: "operador.comercial@monteazul.com",
       passwordHash,
-      roles: { create: [{ roleId: rolOperador.id }] },
+      roles: { create: [{ roleId: rolOperadorComercial.id }] },
       areas: { create: [{ areaId: comercial.id }] },
     },
   });
@@ -312,10 +357,38 @@ async function main() {
       name: "Operador de Administración",
       email: "operador.administracion@monteazul.com",
       passwordHash,
-      roles: { create: [{ roleId: rolOperador.id }] },
+      roles: { create: [{ roleId: rolOperadorAdm.id }] },
       areas: { create: [{ areaId: administracion.id }] },
     },
   });
+
+  // Asegurar asignación de roles especializados para operadores en base de datos existente
+  const userMkt = await prisma.user.findUnique({
+    where: { email: "operador.marketing@monteazul.com" },
+    include: { roles: true },
+  });
+  if (userMkt) {
+    await prisma.userRole.deleteMany({ where: { userId: userMkt.id } });
+    await prisma.userRole.create({ data: { userId: userMkt.id, roleId: rolOperadorMkt.id } });
+  }
+
+  const userCom = await prisma.user.findUnique({
+    where: { email: "operador.comercial@monteazul.com" },
+    include: { roles: true },
+  });
+  if (userCom) {
+    await prisma.userRole.deleteMany({ where: { userId: userCom.id } });
+    await prisma.userRole.create({ data: { userId: userCom.id, roleId: rolOperadorComercial.id } });
+  }
+
+  const userAdm = await prisma.user.findUnique({
+    where: { email: "operador.administracion@monteazul.com" },
+    include: { roles: true },
+  });
+  if (userAdm) {
+    await prisma.userRole.deleteMany({ where: { userId: userAdm.id } });
+    await prisma.userRole.create({ data: { userId: userAdm.id, roleId: rolOperadorAdm.id } });
+  }
 
   // --- Master Data (Tipos de Solicitud y Prioridades) ---------
   const masterTypeRequest = await prisma.masterType.upsert({
