@@ -61,7 +61,9 @@ export default async function MastersPage({
     ) || userPermissions.includes("masters:manage_roles");
 
   const isAreaDirector = currentUser.roles.some(
-    (r) => r.role.name === "Director de Área"
+    (r) =>
+      r.role.name === "Director de Área" ||
+      r.role.name.toLowerCase().includes("director")
   );
 
   const userAreaIds = currentUser.areas.map((a) => a.areaId);

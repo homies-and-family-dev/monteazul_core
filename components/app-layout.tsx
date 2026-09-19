@@ -51,8 +51,14 @@ export default async function AppLayout({
     rolesList.includes("Gerencia") ||
     permissionsList.includes("masters:manage_roles");
 
-  const isAreaDirector = rolesList.includes("Director de Área");
+  const isAreaDirector =
+    rolesList.includes("Director de Área") ||
+    rolesList.some((r) => r.toLowerCase().includes("director"));
+
   const isMarketingMember = areasList.includes("Marketing");
+  const isOtherAreaDirector =
+    rolesList.some((r) => r.toLowerCase().includes("director")) &&
+    !areasList.includes("Marketing");
 
   const canAccessManagement =
     isGeneralAdmin ||
@@ -67,17 +73,36 @@ export default async function AppLayout({
     permissionsList.includes("masters:manage_catalogs") ||
     permissionsList.includes("masters:manage_roles");
 
-  const canAccessMarketing =
+  // Capacidades operativas de Marketing:
+  // Directores de otras áreas (ej. Director Comercial) NO ven Marketing a menos que se les otorgue permiso explícito
+  const canAccessMarketingCampaigns =
     isGeneralAdmin ||
-    isMarketingMember ||
+    permissionsList.includes("marketing:view") ||
+    (isMarketingMember && !isOtherAreaDirector);
+
+  const canAccessMarketingCalendar =
+    isGeneralAdmin ||
     permissionsList.includes("marketing:calendar") ||
-    permissionsList.includes("marketing:equipment");
+    (isMarketingMember && !isOtherAreaDirector);
+
+  const canAccessMarketingEquipment =
+    isGeneralAdmin ||
+    permissionsList.includes("marketing:equipment") ||
+    (isMarketingMember && !isOtherAreaDirector);
+
+  const canAccessMarketing =
+    canAccessMarketingCampaigns ||
+    canAccessMarketingCalendar ||
+    canAccessMarketingEquipment;
 
   const permissions = {
     isGeneralAdmin,
     canAccessManagement,
     canAccessMasters,
     canAccessMarketing,
+    canAccessMarketingCampaigns,
+    canAccessMarketingCalendar,
+    canAccessMarketingEquipment,
   };
 
   // Obtenemos los tipos de catálogos maestros para desplegarlos como submenús dinámicos

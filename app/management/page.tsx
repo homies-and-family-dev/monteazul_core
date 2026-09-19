@@ -41,7 +41,11 @@ export default async function ManagementDashboardPage({ searchParams }: PageProp
     ) ?? false;
 
   const isAreaDirector =
-    currentUser?.roles.some((r) => r.role.name === "Director de Área") ?? false;
+    currentUser?.roles.some(
+      (r) =>
+        r.role.name === "Director de Área" ||
+        r.role.name.toLowerCase().includes("director")
+    ) ?? false;
 
   const directorAreaIds = currentUser?.areas.map((a) => a.areaId) ?? [];
 

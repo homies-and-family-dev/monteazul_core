@@ -28,7 +28,11 @@ async function verifyMasterPermission(targetAreaId?: string | null) {
     (r) => r.role.name === "Administrador General" || r.role.name === "Gerencia"
   );
 
-  const isAreaDirector = user.roles.some((r) => r.role.name === "Director de Área");
+  const isAreaDirector = user.roles.some(
+    (r) =>
+      r.role.name === "Director de Área" ||
+      r.role.name.toLowerCase().includes("director")
+  );
   const userAreaIds = user.areas.map((a) => a.areaId);
 
   // Ámbito corporativo (sin área): sólo administradores generales o gerencia

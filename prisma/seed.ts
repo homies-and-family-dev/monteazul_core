@@ -41,7 +41,25 @@ async function main() {
   const rolDirector = await prisma.role.upsert({
     where: { name: "Director de Área" },
     update: {},
-    create: { name: "Director de Área", description: "Gestiona y supervisa su área" },
+    create: { name: "Director de Área", description: "Rol base de dirección para gestión y supervisión de área" },
+  });
+
+  const rolDirectorComercial = await prisma.role.upsert({
+    where: { name: "Director Comercial" },
+    update: {},
+    create: { name: "Director Comercial", description: "Liderazgo comercial, metas de ventas y supervisión de propuestas" },
+  });
+
+  const rolDirectorMkt = await prisma.role.upsert({
+    where: { name: "Director de Marketing" },
+    update: {},
+    create: { name: "Director de Marketing", description: "Liderazgo de mercadeo, campañas publicitarias, parrilla editorial y equipos audiovisuales" },
+  });
+
+  const rolDirectorAdm = await prisma.role.upsert({
+    where: { name: "Director de Administración" },
+    update: {},
+    create: { name: "Director de Administración", description: "Supervisión administrativa, financiera y contractual corporativa" },
   });
 
   const rolAdminGeneral = await prisma.role.upsert({
@@ -101,6 +119,12 @@ async function main() {
       module: "Estrategia y Gerencia",
     },
     {
+      key: "marketing:view",
+      name: "Tablero y Campañas de Marketing",
+      description: "Acceso al tablero interactivo de campañas, requerimientos y métricas de Marketing (/marketing)",
+      module: "Marketing",
+    },
+    {
       key: "marketing:calendar",
       name: "Calendario de Contenidos",
       description: "Programación y parrilla editorial multimedia de Marketing (/marketing/calendar)",
@@ -151,17 +175,51 @@ async function main() {
     });
   }
 
-  // Vincular permisos a Director de Área
-  const directorKeys = [
+  // Permisos base de directores (Estrategia, Metas, Solicitudes y Maestros; SIN herramientas especializadas de Marketing)
+  const directorBaseKeys = [
     "requests:view", "requests:create", "requests:assign", "requests:work", "requests:subtasks",
-    "management:view", "goals:view", "goals:manage", "marketing:calendar", "marketing:equipment",
-    "masters:view", "masters:manage_catalogs",
+    "management:view", "goals:view", "goals:manage", "masters:view", "masters:manage_catalogs",
   ];
-  for (const p of dbPermissions.filter((item) => directorKeys.includes(item.key))) {
+
+  // Vincular permisos a Director de Área (Base)
+  for (const p of dbPermissions.filter((item) => directorBaseKeys.includes(item.key))) {
     await prisma.rolePermission.upsert({
       where: { roleId_permissionId: { roleId: rolDirector.id, permissionId: p.id } },
       update: {},
       create: { roleId: rolDirector.id, permissionId: p.id },
+    });
+  }
+
+  // Vincular permisos a Director Comercial (Sin Marketing)
+  for (const p of dbPermissions.filter((item) => directorBaseKeys.includes(item.key))) {
+    await prisma.rolePermission.upsert({
+      where: { roleId_permissionId: { roleId: rolDirectorComercial.id, permissionId: p.id } },
+      update: {},
+      create: { roleId: rolDirectorComercial.id, permissionId: p.id },
+    });
+  }
+
+  // Vincular permisos a Director de Administración (Sin Marketing)
+  for (const p of dbPermissions.filter((item) => directorBaseKeys.includes(item.key))) {
+    await prisma.rolePermission.upsert({
+      where: { roleId_permissionId: { roleId: rolDirectorAdm.id, permissionId: p.id } },
+      update: {},
+      create: { roleId: rolDirectorAdm.id, permissionId: p.id },
+    });
+  }
+
+  // Vincular permisos a Director de Marketing (Con Campañas, Calendario y Equipos)
+  const directorMktKeys = [
+    ...directorBaseKeys,
+    "marketing:view",
+    "marketing:calendar",
+    "marketing:equipment",
+  ];
+  for (const p of dbPermissions.filter((item) => directorMktKeys.includes(item.key))) {
+    await prisma.rolePermission.upsert({
+      where: { roleId_permissionId: { roleId: rolDirectorMkt.id, permissionId: p.id } },
+      update: {},
+      create: { roleId: rolDirectorMkt.id, permissionId: p.id },
     });
   }
 
@@ -194,7 +252,7 @@ async function main() {
       name: "Directora de Marketing",
       email: "directora.marketing@monteazul.com",
       passwordHash,
-      roles: { create: [{ roleId: rolDirector.id }] },
+      roles: { create: [{ roleId: rolDirectorMkt.id }] },
       areas: { create: [{ areaId: marketing.id }] },
     },
   });
@@ -218,7 +276,7 @@ async function main() {
       name: "Director Comercial",
       email: "director.comercial@monteazul.com",
       passwordHash,
-      roles: { create: [{ roleId: rolDirector.id }] },
+      roles: { create: [{ roleId: rolDirectorComercial.id }] },
       areas: { create: [{ areaId: comercial.id }] },
     },
   });
@@ -242,7 +300,7 @@ async function main() {
       name: "Director de Administración",
       email: "director.administracion@monteazul.com",
       passwordHash,
-      roles: { create: [{ roleId: rolDirector.id }] },
+      roles: { create: [{ roleId: rolDirectorAdm.id }] },
       areas: { create: [{ areaId: administracion.id }] },
     },
   });

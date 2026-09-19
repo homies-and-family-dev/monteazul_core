@@ -24,7 +24,11 @@ export default async function GoalsPage() {
     ) ?? false;
 
   const isAreaDirector =
-    currentUser?.roles.some((r) => r.role.name === "Director de Área") ?? false;
+    currentUser?.roles.some(
+      (r) =>
+        r.role.name === "Director de Área" ||
+        r.role.name.toLowerCase().includes("director")
+    ) ?? false;
 
   const userDirectorAreaIds = currentUser?.areas.map((a) => a.areaId) ?? [];
 
@@ -82,7 +86,10 @@ export default async function GoalsPage() {
       roles: {
         some: {
           role: {
-            name: { in: ["Administrador General", "Gerencia", "Director de Área"] },
+            OR: [
+              { name: { in: ["Administrador General", "Gerencia"] } },
+              { name: { contains: "Director" } },
+            ],
           },
         },
       },

@@ -13,21 +13,48 @@ export default async function EquipmentPage() {
   const currentUser = await prisma.user.findUnique({
     where: { id: session.user.id },
     include: {
-      roles: { include: { role: true } },
+      roles: {
+        include: {
+          role: {
+            include: {
+              permissions: {
+                include: { permission: true },
+              },
+            },
+          },
+        },
+      },
       areas: { include: { area: true } },
     },
   });
 
-  const isGeneralAdmin =
-    currentUser?.roles.some(
-      (r) => r.role.name === "Administrador General" || r.role.name === "Gerencia"
-    ) ?? false;
+  const rolesList = currentUser?.roles.map((r) => r.role.name) ?? [];
+  const areasList = currentUser?.areas.map((a) => a.area.name) ?? [];
+  const permissionsList = Array.from(
+    new Set(
+      currentUser?.roles.flatMap((r) =>
+        r.role.permissions.map((p) => p.permission.key)
+      ) ?? []
+    )
+  );
 
-  const isMarketingMember =
-    currentUser?.areas.some((a) => a.area.name === "Marketing") ?? false;
+  const isGeneralAdmin =
+    rolesList.includes("Administrador General") ||
+    rolesList.includes("Gerencia") ||
+    permissionsList.includes("masters:manage_roles");
+
+  const isMarketingMember = areasList.includes("Marketing");
+  const isOtherAreaDirector =
+    rolesList.some((r) => r.toLowerCase().includes("director")) &&
+    !areasList.includes("Marketing");
+
+  const canAccessEquipment =
+    isGeneralAdmin ||
+    permissionsList.includes("marketing:equipment") ||
+    (isMarketingMember && !isOtherAreaDirector);
 
   // Verificación de acceso al Módulo Especializado de Marketing (Puntos 32-35)
-  if (!isGeneralAdmin && !isMarketingMember) {
+  if (!canAccessEquipment) {
     return (
       <div className="bg-white min-h-screen flex items-center justify-center p-6">
         <div className="max-w-md w-full p-6 rounded-xl border border-blue-200 bg-blue-50/70 shadow-sm text-center space-y-4">

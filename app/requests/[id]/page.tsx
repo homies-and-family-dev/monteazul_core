@@ -84,13 +84,19 @@ export default async function RequestDetailPage({ params }: PageProps) {
 
   const userAreaIds = currentUser?.areas.map((a) => a.areaId) ?? [];
 
+  const isDirectorRole = currentUser?.roles.some(
+    (r) =>
+      r.role.name === "Director de Área" ||
+      r.role.name.toLowerCase().includes("director")
+  );
+
   const isAreaDirector =
-    (currentUser?.roles.some((r) => r.role.name === "Director de Área") &&
+    (isDirectorRole &&
       currentUser?.areas.some((a) => a.areaId === request.destinationAreaId)) ??
     false;
 
   const isDirectorOfRelatedArea =
-    (currentUser?.roles.some((r) => r.role.name === "Director de Área") &&
+    (isDirectorRole &&
       (userAreaIds.includes(request.destinationAreaId) || userAreaIds.includes(request.originAreaId))) ??
     false;
 

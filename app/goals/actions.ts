@@ -24,7 +24,11 @@ async function checkGoalsAccess() {
     ) ?? false;
 
   const isAreaDirector =
-    currentUser?.roles.some((r) => r.role.name === "Director de Área") ?? false;
+    currentUser?.roles.some(
+      (r) =>
+        r.role.name === "Director de Área" ||
+        r.role.name.toLowerCase().includes("director")
+    ) ?? false;
 
   if (!isGeneralAdmin && !isAreaDirector) {
     throw new Error("Acceso no autorizado al módulo de Objetivos.");

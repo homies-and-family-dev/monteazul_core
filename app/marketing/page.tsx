@@ -51,13 +51,18 @@ export default async function MarketingPage() {
     rolesList.includes("Gerencia") ||
     permissionsList.includes("masters:manage_roles");
 
-  const isMarketingMember =
-    areasList.includes("Marketing") ||
-    permissionsList.includes("marketing:calendar") ||
-    permissionsList.includes("marketing:equipment");
+  const isMarketingMember = areasList.includes("Marketing");
+  const isOtherAreaDirector =
+    rolesList.some((r) => r.toLowerCase().includes("director")) &&
+    !areasList.includes("Marketing");
+
+  const canAccessMarketing =
+    isGeneralAdmin ||
+    permissionsList.includes("marketing:view") ||
+    (isMarketingMember && !isOtherAreaDirector);
 
   // Validación de acceso al Módulo Especializado de Marketing
-  if (!isGeneralAdmin && !isMarketingMember) {
+  if (!canAccessMarketing) {
     return (
       <div className="bg-white min-h-screen flex items-center justify-center p-6">
         <div className="max-w-md w-full p-6 rounded-xl border border-blue-200 bg-blue-50/70 shadow-sm text-center space-y-4">

@@ -16,6 +16,9 @@ interface UserPermissions {
   canAccessManagement: boolean;
   canAccessMasters: boolean;
   canAccessMarketing: boolean;
+  canAccessMarketingCampaigns?: boolean;
+  canAccessMarketingCalendar?: boolean;
+  canAccessMarketingEquipment?: boolean;
 }
 
 export interface MasterTypeItem {
@@ -483,41 +486,47 @@ export default function SidebarShell({
                 {/* Submódulos de Marketing desplegables */}
                 {(!isCollapsed ? marketingOpen : false) && (
                   <div className="pl-4 ml-2 border-l border-blue-200 space-y-1 pt-1">
-                    <Link
-                      href="/marketing"
-                      className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
-                        isRouteActive("/marketing", true)
-                          ? "bg-blue-700 text-white font-bold shadow-xs"
-                          : "text-slate-700 hover:bg-blue-100/80 hover:text-blue-950"
-                      }`}
-                    >
-                      <IconLayoutGrid className="w-3.5 h-3.5 shrink-0" />
-                      <span className="truncate">Tablero y Campañas</span>
-                    </Link>
+                    {(permissions.canAccessMarketingCampaigns ?? true) && (
+                      <Link
+                        href="/marketing"
+                        className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
+                          isRouteActive("/marketing", true)
+                            ? "bg-blue-700 text-white font-bold shadow-xs"
+                            : "text-slate-700 hover:bg-blue-100/80 hover:text-blue-950"
+                        }`}
+                      >
+                        <IconLayoutGrid className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate">Tablero y Campañas</span>
+                      </Link>
+                    )}
 
-                    <Link
-                      href="/marketing/calendar"
-                      className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
-                        isRouteActive("/marketing/calendar", true)
-                          ? "bg-blue-700 text-white font-bold shadow-xs"
-                          : "text-slate-700 hover:bg-blue-100/80 hover:text-blue-950"
-                      }`}
-                    >
-                      <IconCalendar className="w-3.5 h-3.5 shrink-0" />
-                      <span className="truncate">Calendario de Contenidos</span>
-                    </Link>
+                    {(permissions.canAccessMarketingCalendar ?? true) && (
+                      <Link
+                        href="/marketing/calendar"
+                        className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
+                          isRouteActive("/marketing/calendar", true)
+                            ? "bg-blue-700 text-white font-bold shadow-xs"
+                            : "text-slate-700 hover:bg-blue-100/80 hover:text-blue-950"
+                        }`}
+                      >
+                        <IconCalendar className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate">Calendario de Contenidos</span>
+                      </Link>
+                    )}
 
-                    <Link
-                      href="/marketing/equipment"
-                      className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
-                        isRouteActive("/marketing/equipment", true)
-                          ? "bg-blue-700 text-white font-bold shadow-xs"
-                          : "text-slate-700 hover:bg-blue-100/80 hover:text-blue-950"
-                      }`}
-                    >
-                      <IconPackage className="w-3.5 h-3.5 shrink-0" />
-                      <span className="truncate">Inventario y Préstamos</span>
-                    </Link>
+                    {(permissions.canAccessMarketingEquipment ?? true) && (
+                      <Link
+                        href="/marketing/equipment"
+                        className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
+                          isRouteActive("/marketing/equipment", true)
+                            ? "bg-blue-700 text-white font-bold shadow-xs"
+                            : "text-slate-700 hover:bg-blue-100/80 hover:text-blue-950"
+                        }`}
+                      >
+                        <IconPackage className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate">Inventario y Préstamos</span>
+                      </Link>
+                    )}
                   </div>
                 )}
               </div>
