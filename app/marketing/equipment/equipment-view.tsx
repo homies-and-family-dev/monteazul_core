@@ -1108,26 +1108,13 @@ export default function EquipmentView({
             </div>
 
             <form onSubmit={handleSaveLoan} className="space-y-3">
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block font-semibold text-slate-700">
-                    Custodio Responsable del Préstamo *
-                  </label>
-                  <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-200">
-                    ✓ Usuario en Sesión (Firmante)
-                  </span>
+              <div className="flex items-center justify-between p-2.5 rounded-lg bg-emerald-50/70 border border-emerald-200 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-slate-800">{activeUserName}</span>
+                  <span className="text-slate-500 font-mono text-[11px]">({activeUserEmail})</span>
                 </div>
-                <select
-                  value={activeUserId}
-                  disabled
-                  className="w-full rounded-lg border border-blue-300 bg-blue-50/70 px-3 py-2 text-xs text-blue-950 font-bold cursor-not-allowed"
-                >
-                  <option value={activeUserId}>
-                    {activeUserName} ({activeUserEmail})
-                  </option>
-                </select>
-                <span className="text-[10px] text-slate-500 mt-1 block italic">
-                  Política Cero Papel: El préstamo se expide exclusivamente a nombre del usuario en sesión, garantizando que quien solicita el equipo es quien firma digitalmente el acta.
+                <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300 shrink-0">
+                  ✓ Usuario en Sesión (Firmante)
                 </span>
               </div>
 
