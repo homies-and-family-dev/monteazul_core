@@ -184,75 +184,62 @@ export default async function MastersPage({
       }),
     ]);
 
+  const sectionInfo = {
+    users: {
+      title: "Usuarios y Delegación de Actividades",
+      subtitle:
+        "Puntos 8 y 21 del Documento Maestro: Asignación de roles y delegación de membresía operativa a áreas para atender o supervisar solicitudes.",
+      badge: isGeneralAdmin
+        ? "Control de Usuarios y Membresías"
+        : "Visualización de Equipo",
+    },
+    roles: {
+      title: "Roles y Vistas Permitidas",
+      subtitle:
+        "Puntos 26 y 27 del Documento Maestro: Configuración de roles y matriz de permisos de acceso a módulos y vistas corporativas.",
+      badge: isGeneralAdmin
+        ? "Gestión de Roles y Permisos"
+        : "Visualización de Perfiles",
+    },
+    catalogs: {
+      title: "Datos Maestros y Parámetros",
+      subtitle:
+        "Puntos 24 y 25 del Documento Maestro: Autonomía operativa para configurar listas, tipos de solicitud y prioridades sin recurrir a desarrollo.",
+      badge: isGeneralAdmin
+        ? "Gestión Corporativa y de Todas las Áreas"
+        : "Gestión de Catálogos de su Área",
+    },
+  }[activeTab as "users" | "roles" | "catalogs"] || {
+    title: "Datos Maestros y Parámetros",
+    subtitle:
+      "Puntos 24 y 25 del Documento Maestro: Autonomía operativa para configurar listas, tipos de solicitud y prioridades sin recurrir a desarrollo.",
+    badge: isGeneralAdmin
+      ? "Gestión Corporativa y de Todas las Áreas"
+      : "Gestión de Catálogos de su Área",
+  };
+
   return (
     <div className="bg-white min-h-screen">
       <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 space-y-6">
-        {/* Cabecera del Módulo de Maestros */}
+        {/* Cabecera del Módulo */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-blue-200 pb-4">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-blue-950">
-              Configuración, Maestros y Delegación
+              {sectionInfo.title}
             </h1>
             <p className="text-xs text-slate-600 mt-0.5">
-              Puntos 24, 25 y 26 del Documento Maestro: Autonomía operativa para catálogos, definición de roles, matriz de vistas permitidas y delegación de miembros a áreas operativas.
+              {sectionInfo.subtitle}
             </p>
           </div>
 
           <div className="flex items-center gap-2">
             <span className="text-xs px-3 py-1 rounded-full font-bold bg-blue-100 text-blue-900 border border-blue-200">
-              {isGeneralAdmin
-                ? "Administración General y Transversal"
-                : "Gestión de Catálogos de su Área"}
+              {sectionInfo.badge}
             </span>
           </div>
         </div>
 
-        {/* Pestañas de Navegación del Módulo */}
-        <div className="flex flex-wrap items-center gap-2 border-b border-blue-200 pb-2">
-          <Link
-            href="/masters?tab=catalogs"
-            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
-              activeTab === "catalogs"
-                ? "bg-blue-700 text-white shadow-xs"
-                : "bg-blue-50/70 text-blue-900 hover:bg-blue-100 hover:text-blue-950 border border-blue-200/80"
-            }`}
-          >
-            <span>📑 Catálogos y Listas</span>
-            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/20">
-              {masterTypes.length}
-            </span>
-          </Link>
-
-          <Link
-            href="/masters?tab=roles"
-            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
-              activeTab === "roles"
-                ? "bg-blue-700 text-white shadow-xs"
-                : "bg-blue-50/70 text-blue-900 hover:bg-blue-100 hover:text-blue-950 border border-blue-200/80"
-            }`}
-          >
-            <span>🛡️ Roles y Vistas Permitidas</span>
-            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/20">
-              {roles.length}
-            </span>
-          </Link>
-
-          <Link
-            href="/masters?tab=users"
-            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
-              activeTab === "users"
-                ? "bg-blue-700 text-white shadow-xs"
-                : "bg-blue-50/70 text-blue-900 hover:bg-blue-100 hover:text-blue-950 border border-blue-200/80"
-            }`}
-          >
-            <span>👥 Usuarios y Delegación</span>
-            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/20">
-              {users.length}
-            </span>
-          </Link>
-        </div>
-
-        {/* Contenido según la pestaña activa */}
+        {/* Contenido según la opción seleccionada exclusivamente desde el menú lateral */}
         {activeTab === "catalogs" && (
           <MastersManager
             masterTypes={masterTypes}
