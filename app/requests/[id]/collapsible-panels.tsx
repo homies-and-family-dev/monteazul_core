@@ -209,7 +209,7 @@ export default function CollapsiblePanels({
               Ocultar control de tiempos ↑
             </button>
           </div>
-          {timesNode}
+          <div>{timesNode}</div>
         </div>
       )}
 
@@ -225,7 +225,7 @@ export default function CollapsiblePanels({
               Ocultar subtareas ↑
             </button>
           </div>
-          {tasksNode}
+          <div>{tasksNode}</div>
         </div>
       )}
 
@@ -241,7 +241,7 @@ export default function CollapsiblePanels({
               Ocultar repositorios y enlaces ↑
             </button>
           </div>
-          {linksNode}
+          <div>{linksNode}</div>
         </div>
       )}
 

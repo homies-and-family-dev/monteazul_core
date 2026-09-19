@@ -279,7 +279,7 @@ export default async function RequestDetailPage({ params }: PageProps) {
           comments={request.comments}
           transitions={metrics.transitionsWithDuration}
           timesNode={
-            <div className="bg-blue-50/70 p-5 rounded-xl border border-blue-200 shadow-sm space-y-4">
+            <div key="panel-times-node" className="bg-blue-50/70 p-5 rounded-xl border border-blue-200 shadow-sm space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
                   <span className="text-xs font-bold uppercase tracking-wider text-blue-900">
@@ -364,6 +364,7 @@ export default async function RequestDetailPage({ params }: PageProps) {
           }
           tasksNode={
             <SubtasksPanel
+              key="panel-tasks-node"
               requestId={request.id}
               requestStatus={request.status}
               tasks={request.tasks}
@@ -373,7 +374,7 @@ export default async function RequestDetailPage({ params }: PageProps) {
             />
           }
           linksNode={
-            <div className="bg-blue-50/70 p-5 rounded-xl border border-blue-200 shadow-sm space-y-3">
+            <div key="panel-links-node" className="bg-blue-50/70 p-5 rounded-xl border border-blue-200 shadow-sm space-y-3">
               <div>
                 <h3 className="text-sm font-bold text-blue-950">
                   Repositorios y Enlaces Externos
