@@ -19,7 +19,15 @@ export default async function AppLayout({
   const [userRoles, userAreas] = await Promise.all([
     prisma.userRole.findMany({
       where: { userId: session.user.id },
-      include: { role: true },
+      include: {
+        role: {
+          include: {
+            permissions: {
+              include: { permission: true },
+            },
+          },
+        },
+      },
     }),
     prisma.userArea.findMany({
       where: { userId: session.user.id },
@@ -29,22 +37,47 @@ export default async function AppLayout({
 
   const rolesList = userRoles.map((ur) => ur.role.name);
   const areasList = userAreas.map((ua) => ua.area.name);
+  const permissionsList = Array.from(
+    new Set(
+      userRoles.flatMap((ur) =>
+        ur.role.permissions.map((p) => p.permission.key)
+      )
+    )
+  );
 
-  // Verificación de capacidades según roles
+  // Verificación de capacidades según roles y permisos de vistas
   const isGeneralAdmin =
-    rolesList.includes("Administrador General") || rolesList.includes("Gerencia");
+    rolesList.includes("Administrador General") ||
+    rolesList.includes("Gerencia") ||
+    permissionsList.includes("masters:manage_roles");
 
   const isAreaDirector = rolesList.includes("Director de Área");
-
   const isMarketingMember = areasList.includes("Marketing");
 
-  const canAccessMasters = isGeneralAdmin || isAreaDirector;
+  const canAccessManagement =
+    isGeneralAdmin ||
+    isAreaDirector ||
+    permissionsList.includes("management:view") ||
+    permissionsList.includes("goals:view");
+
+  const canAccessMasters =
+    isGeneralAdmin ||
+    isAreaDirector ||
+    permissionsList.includes("masters:view") ||
+    permissionsList.includes("masters:manage_catalogs") ||
+    permissionsList.includes("masters:manage_roles");
+
+  const canAccessMarketing =
+    isGeneralAdmin ||
+    isMarketingMember ||
+    permissionsList.includes("marketing:calendar") ||
+    permissionsList.includes("marketing:equipment");
 
   const permissions = {
     isGeneralAdmin,
-    canAccessManagement: isGeneralAdmin || isAreaDirector,
+    canAccessManagement,
     canAccessMasters,
-    canAccessMarketing: isGeneralAdmin || isMarketingMember,
+    canAccessMarketing,
   };
 
   // Obtenemos los tipos de catálogos maestros para desplegarlos como submenús dinámicos

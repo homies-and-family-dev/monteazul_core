@@ -102,10 +102,12 @@ model UserRole {
 }
 
 model Permission {
-  id    String @id @default(cuid())
-  key   String @unique  // "file_request", "view", "work_request", "assign",
-                          // "change_status", "manage_master_data", "executive_view", etc.
-  roles RolePermission[]
+  id          String   @id @default(cuid())
+  key         String   @unique
+  name        String?
+  description String?
+  module      String?
+  roles       RolePermission[]
 }
 
 model RolePermission {

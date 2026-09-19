@@ -50,6 +50,131 @@ async function main() {
     create: { name: "Administrador General", description: "Visión y control transversal de la plataforma" },
   });
 
+  // --- Permissions ----------------------------------------------
+  const systemPermissions = [
+    {
+      key: "requests:view",
+      name: "Ver Bandeja de Solicitudes",
+      description: "Consultar solicitudes, filtros y expedientes interactivos (/requests)",
+      module: "Solicitudes",
+    },
+    {
+      key: "requests:create",
+      name: "Radicar Nuevas Solicitudes",
+      description: "Crear y radicar solicitudes interáreas transversales (/requests/new)",
+      module: "Solicitudes",
+    },
+    {
+      key: "requests:assign",
+      name: "Asignar Operador Responsable",
+      description: "Asignar y reasignar operadores a las solicitudes del área",
+      module: "Solicitudes",
+    },
+    {
+      key: "requests:work",
+      name: "Atender y Cambiar Estados",
+      description: "Operar solicitudes, registrar avances, revisiones y devoluciones",
+      module: "Solicitudes",
+    },
+    {
+      key: "requests:subtasks",
+      name: "Gestionar Subtareas",
+      description: "Crear, asignar y completar subtareas operativas dentro del expediente",
+      module: "Solicitudes",
+    },
+    {
+      key: "management:view",
+      name: "Módulo Gerencial y Analítica",
+      description: "Acceso a métricas de cuellos de botella, balance de áreas y saturación (/management)",
+      module: "Estrategia y Gerencia",
+    },
+    {
+      key: "goals:view",
+      name: "Visualizar Objetivos de Área",
+      description: "Consultar objetivos estratégicos y porcentajes de cumplimiento (/goals)",
+      module: "Estrategia y Gerencia",
+    },
+    {
+      key: "goals:manage",
+      name: "Crear y Actualizar Objetivos",
+      description: "Definir nuevas metas estratégicas y registrar avances con justificación",
+      module: "Estrategia y Gerencia",
+    },
+    {
+      key: "marketing:calendar",
+      name: "Calendario de Contenidos",
+      description: "Programación y parrilla editorial multimedia de Marketing (/marketing/calendar)",
+      module: "Marketing",
+    },
+    {
+      key: "marketing:equipment",
+      name: "Inventario y Préstamos de Equipos",
+      description: "Control de equipos, actas F-MKT-01 y F-MKT-02 de salida/retorno (/marketing/equipment)",
+      module: "Marketing",
+    },
+    {
+      key: "masters:view",
+      name: "Consultar Datos Maestros",
+      description: "Visualizar catálogos y parámetros del sistema (/masters)",
+      module: "Configuración y Maestros",
+    },
+    {
+      key: "masters:manage_catalogs",
+      name: "Gestionar Catálogos y Listas",
+      description: "Crear y modificar tipos de solicitud, prioridades y valores maestros",
+      module: "Configuración y Maestros",
+    },
+    {
+      key: "masters:manage_roles",
+      name: "Gestionar Roles y Delegación",
+      description: "Administrar roles, matriz de permisos de vistas y delegación de usuarios",
+      module: "Configuración y Maestros",
+    },
+  ];
+
+  const dbPermissions = [];
+  for (const perm of systemPermissions) {
+    const p = await prisma.permission.upsert({
+      where: { key: perm.key },
+      update: { name: perm.name, description: perm.description, module: perm.module },
+      create: perm,
+    });
+    dbPermissions.push(p);
+  }
+
+  // Vincular permisos al Administrador General (Todos)
+  for (const p of dbPermissions) {
+    await prisma.rolePermission.upsert({
+      where: { roleId_permissionId: { roleId: rolAdminGeneral.id, permissionId: p.id } },
+      update: {},
+      create: { roleId: rolAdminGeneral.id, permissionId: p.id },
+    });
+  }
+
+  // Vincular permisos a Director de Área
+  const directorKeys = [
+    "requests:view", "requests:create", "requests:assign", "requests:work", "requests:subtasks",
+    "management:view", "goals:view", "goals:manage", "marketing:calendar", "marketing:equipment",
+    "masters:view", "masters:manage_catalogs",
+  ];
+  for (const p of dbPermissions.filter((item) => directorKeys.includes(item.key))) {
+    await prisma.rolePermission.upsert({
+      where: { roleId_permissionId: { roleId: rolDirector.id, permissionId: p.id } },
+      update: {},
+      create: { roleId: rolDirector.id, permissionId: p.id },
+    });
+  }
+
+  // Vincular permisos a Operador
+  const operadorKeys = ["requests:view", "requests:create", "requests:work", "requests:subtasks"];
+  for (const p of dbPermissions.filter((item) => operadorKeys.includes(item.key))) {
+    await prisma.rolePermission.upsert({
+      where: { roleId_permissionId: { roleId: rolOperador.id, permissionId: p.id } },
+      update: {},
+      create: { roleId: rolOperador.id, permissionId: p.id },
+    });
+  }
+
   // --- Users -----------------------------------------------------
   const admin = await prisma.user.upsert({
     where: { email: "admin@monteazul.com" },
