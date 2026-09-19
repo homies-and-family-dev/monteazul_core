@@ -1,6 +1,5 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import CalendarView from "./calendar-view";
 
@@ -28,25 +27,19 @@ export default async function MarketingCalendarPage() {
     },
   });
 
-  const rolesList = currentUser?.roles.map((r) => r.role.name) ?? [];
-  const areasList = currentUser?.areas.map((a) => a.area.name) ?? [];
-  const permissionsList = Array.from(
-    new Set(
-      currentUser?.roles.flatMap((r) =>
-        r.role.permissions.map((p) => p.permission.key)
-      ) ?? []
-    )
+  if (!currentUser) {
+    redirect("/login");
+  }
+
+  const rolesList = currentUser.roles.map((r) => r.role.name);
+  const permissionsList = currentUser.roles.flatMap((r) =>
+    r.role.permissions.map((p) => p.permission.key)
   );
 
   const isGeneralAdmin =
     rolesList.includes("Administrador General") ||
     rolesList.includes("Gerencia") ||
     permissionsList.includes("masters:manage_roles");
-
-  const isMarketingMember = areasList.includes("Marketing");
-  const isOtherAreaDirector =
-    rolesList.some((r) => r.toLowerCase().includes("director")) &&
-    !areasList.includes("Marketing");
 
   const canAccessCalendar =
     isGeneralAdmin ||
@@ -63,14 +56,9 @@ export default async function MarketingCalendarPage() {
           <p className="text-xs text-slate-700 leading-relaxed">
             El Calendario Editorial de Contenidos y las herramientas operativas especializadas de Marketing están reservadas para el equipo del área de Marketing y la Dirección General.
           </p>
-          <div>
-            <Link
-              href="/requests"
-              className="inline-block px-4 py-2 rounded-lg bg-blue-700 hover:bg-blue-800 text-white text-xs font-semibold shadow-xs"
-            >
-              Ir a la Bandeja de Solicitudes
-            </Link>
-          </div>
+          <p className="text-[11px] text-slate-500 italic">
+            Utilice el panel de navegación izquierdo para acceder a sus módulos autorizados.
+          </p>
         </div>
       </div>
     );

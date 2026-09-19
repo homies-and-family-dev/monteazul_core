@@ -1052,19 +1052,11 @@ export default function CalendarView({
                   </div>
                 )}
                 {detailItem.request && (
-                  <div className="flex items-center justify-between bg-blue-50/60 p-2.5 rounded-lg border border-blue-200">
-                    <div>
-                      <span className="text-slate-600 block text-[10px]">Solicitud Core Asociada</span>
-                      <span className="font-bold text-blue-950">
-                        {detailItem.request.ticketNumber} — {detailItem.request.title}
-                      </span>
-                    </div>
-                    <a
-                      href={`/requests/${detailItem.request.id}`}
-                      className="px-2.5 py-1 border border-blue-300 bg-white hover:bg-blue-100 text-blue-950 rounded font-semibold text-[11px]"
-                    >
-                      Ver Solicitud
-                    </a>
+                  <div className="bg-blue-50/60 p-2.5 rounded-lg border border-blue-200">
+                    <span className="text-slate-600 block text-[10px]">Solicitud Core Asociada</span>
+                    <span className="font-bold text-blue-950 text-xs">
+                      {detailItem.request.ticketNumber} — {detailItem.request.title}
+                    </span>
                   </div>
                 )}
               </div>

@@ -1,6 +1,5 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import EquipmentView from "./equipment-view";
 
@@ -28,25 +27,19 @@ export default async function EquipmentPage() {
     },
   });
 
-  const rolesList = currentUser?.roles.map((r) => r.role.name) ?? [];
-  const areasList = currentUser?.areas.map((a) => a.area.name) ?? [];
-  const permissionsList = Array.from(
-    new Set(
-      currentUser?.roles.flatMap((r) =>
-        r.role.permissions.map((p) => p.permission.key)
-      ) ?? []
-    )
+  if (!currentUser) {
+    redirect("/login");
+  }
+
+  const rolesList = currentUser.roles.map((r) => r.role.name);
+  const permissionsList = currentUser.roles.flatMap((r) =>
+    r.role.permissions.map((p) => p.permission.key)
   );
 
   const isGeneralAdmin =
     rolesList.includes("Administrador General") ||
     rolesList.includes("Gerencia") ||
     permissionsList.includes("masters:manage_roles");
-
-  const isMarketingMember = areasList.includes("Marketing");
-  const isOtherAreaDirector =
-    rolesList.some((r) => r.toLowerCase().includes("director")) &&
-    !areasList.includes("Marketing");
 
   const canAccessEquipment =
     isGeneralAdmin ||
@@ -63,14 +56,9 @@ export default async function EquipmentPage() {
           <p className="text-xs text-slate-700 leading-relaxed">
             El control de inventario y préstamo de equipos audiovisuales de Marketing requiere el permiso correspondiente en la matriz de roles o pertenecer a la Dirección General.
           </p>
-          <div>
-            <Link
-              href="/requests"
-              className="inline-block px-4 py-2 rounded-lg bg-blue-700 hover:bg-blue-800 text-white text-xs font-semibold shadow-xs"
-            >
-              Ir a la Bandeja de Solicitudes
-            </Link>
-          </div>
+          <p className="text-[11px] text-slate-500 italic">
+            Utilice el panel de navegación izquierdo para acceder a sus módulos autorizados.
+          </p>
         </div>
       </div>
     );
@@ -138,15 +126,6 @@ export default async function EquipmentPage() {
             <p className="text-xs text-slate-600 mt-0.5">
               Gestión de cámaras, drones, ópticas, luces y generación de actas oficiales de entrega (F-MKT-01) y devolución (F-MKT-02).
             </p>
-          </div>
-
-          <div className="flex items-center gap-2 text-xs">
-            <Link
-              href="/marketing/calendar"
-              className="px-3 py-1.5 rounded-lg border border-blue-300 bg-white hover:bg-blue-100 text-blue-950 font-semibold shadow-2xs transition-colors"
-            >
-              Ir a Calendario de Contenidos →
-            </Link>
           </div>
         </div>
 

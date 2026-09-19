@@ -1,6 +1,5 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import CampaignsDashboard from "./campaigns-dashboard";
 
@@ -77,14 +76,9 @@ export default async function MarketingPage() {
           <p className="text-xs text-slate-700 leading-relaxed">
             El Tablero de Campañas y las herramientas operativas especializadas de Marketing están reservadas para el equipo del área de Marketing y la Dirección General.
           </p>
-          <div>
-            <Link
-              href="/requests"
-              className="inline-block px-4 py-2 rounded-lg bg-blue-700 hover:bg-blue-800 text-white text-xs font-semibold shadow-xs"
-            >
-              Ir a la Bandeja de Solicitudes
-            </Link>
-          </div>
+          <p className="text-[11px] text-slate-500 italic">
+            Utilice el panel de navegación izquierdo para acceder a sus módulos autorizados.
+          </p>
         </div>
       </div>
     );

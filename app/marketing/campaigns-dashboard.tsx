@@ -134,27 +134,6 @@ export default function CampaignsDashboard({
             Bienvenido/a, <span className="font-semibold text-blue-950">{userName}</span>. Gestión integral de requerimientos corporativos, producción de piezas publicitarias, calendario editorial e inventario técnico.
           </p>
         </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          <Link
-            href="/marketing/calendar"
-            className="px-3 py-2 rounded-lg bg-blue-50 text-blue-800 hover:bg-blue-100 border border-blue-200 text-xs font-semibold transition-colors"
-          >
-            📅 Calendario Editorial
-          </Link>
-          <Link
-            href="/marketing/equipment"
-            className="px-3 py-2 rounded-lg bg-blue-50 text-blue-800 hover:bg-blue-100 border border-blue-200 text-xs font-semibold transition-colors"
-          >
-            📦 Equipos y Préstamos
-          </Link>
-          <Link
-            href="/requests/new"
-            className="px-3.5 py-2 rounded-lg bg-blue-700 text-white hover:bg-blue-800 text-xs font-semibold shadow-xs transition-colors"
-          >
-            + Radicar Requerimiento
-          </Link>
-        </div>
       </div>
 
       {/* Tarjetas de Métricas Clave (KPIs de Marketing) */}
@@ -315,14 +294,8 @@ export default function CampaignsDashboard({
           {/* Lista de Requerimientos */}
           <div className="space-y-3">
             {filteredRequests.length === 0 ? (
-              <div className="bg-white p-8 rounded-xl border border-dashed border-blue-300 text-center text-xs text-slate-500 space-y-2">
+              <div className="bg-white p-8 rounded-xl border border-dashed border-blue-300 text-center text-xs text-slate-500">
                 <p>No se encontraron requerimientos de Marketing con los filtros seleccionados.</p>
-                <Link
-                  href="/requests/new"
-                  className="inline-block px-3 py-1.5 rounded-lg bg-blue-700 text-white font-semibold text-xs"
-                >
-                  Radicar Primer Requerimiento
-                </Link>
               </div>
             ) : (
               filteredRequests.map((req) => {
@@ -420,12 +393,6 @@ export default function CampaignsDashboard({
               <h2 className="text-xs font-bold text-blue-950 uppercase tracking-wide">
                 Parrilla Editorial Próxima
               </h2>
-              <Link
-                href="/marketing/calendar"
-                className="text-[11px] font-semibold text-blue-700 hover:text-blue-900"
-              >
-                Ver Calendario →
-              </Link>
             </div>
 
             <div className="space-y-2.5">
@@ -465,15 +432,6 @@ export default function CampaignsDashboard({
                 ))
               )}
             </div>
-
-            <div className="pt-2 border-t border-blue-100">
-              <Link
-                href="/marketing/calendar"
-                className="block text-center w-full py-2 rounded-lg bg-blue-700 hover:bg-blue-800 text-white text-xs font-semibold shadow-xs transition-colors"
-              >
-                Abrir Calendario Completo
-              </Link>
-            </div>
           </div>
 
           {/* Tarjeta de Equipos Audiovisuales */}
@@ -482,12 +440,6 @@ export default function CampaignsDashboard({
               <h2 className="text-xs font-bold text-blue-950 uppercase tracking-wide">
                 Control de Equipos
               </h2>
-              <Link
-                href="/marketing/equipment"
-                className="text-[11px] font-semibold text-blue-700 hover:text-blue-900"
-              >
-                Inventario →
-              </Link>
             </div>
 
             <p className="text-xs text-slate-600">
@@ -513,13 +465,6 @@ export default function CampaignsDashboard({
                 </div>
               </div>
             </div>
-
-            <Link
-              href="/marketing/equipment"
-              className="block text-center w-full py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold transition-colors"
-            >
-              Gestionar Inventario y Préstamos
-            </Link>
           </div>
         </div>
       </div>

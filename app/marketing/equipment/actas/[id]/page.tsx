@@ -111,12 +111,9 @@ export default async function ActaPage({ params, searchParams }: PageProps) {
           <p className="text-xs text-slate-600">
             No cuenta con permisos para ver ni firmar el acta del préstamo <strong>{loan.folio}</strong>. Solo el solicitante responsable, el personal de Marketing o la Dirección General pueden acceder.
           </p>
-          <Link
-            href="/requests"
-            className="inline-block px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-800 text-white text-xs font-semibold"
-          >
-            Ir al Tablero Principal
-          </Link>
+          <p className="text-[11px] text-slate-500 italic">
+            Utilice el panel de navegación izquierdo para acceder a sus módulos autorizados.
+          </p>
         </div>
       </div>
     );
