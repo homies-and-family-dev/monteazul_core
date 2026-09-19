@@ -13,27 +13,44 @@ export default async function GoalsPage() {
   const currentUser = await prisma.user.findUnique({
     where: { id: session.user.id },
     include: {
-      roles: { include: { role: true } },
+      roles: {
+        include: {
+          role: {
+            include: {
+              permissions: {
+                include: { permission: true },
+              },
+            },
+          },
+        },
+      },
       areas: { include: { area: true } },
     },
   });
 
-  const isGeneralAdmin =
-    currentUser?.roles.some(
-      (r) => r.role.name === "Administrador General" || r.role.name === "Gerencia"
-    ) ?? false;
+  const rolesList = currentUser?.roles.map((r) => r.role.name) ?? [];
+  const permissionsList = Array.from(
+    new Set(
+      currentUser?.roles.flatMap((r) =>
+        r.role.permissions.map((p) => p.permission.key)
+      ) ?? []
+    )
+  );
 
-  const isAreaDirector =
-    currentUser?.roles.some(
-      (r) =>
-        r.role.name === "Director de Área" ||
-        r.role.name.toLowerCase().includes("director")
-    ) ?? false;
+  const isGeneralAdmin =
+    rolesList.includes("Administrador General") ||
+    rolesList.includes("Gerencia") ||
+    permissionsList.includes("masters:manage_roles");
+
+  const canAccessGoals =
+    isGeneralAdmin ||
+    permissionsList.includes("goals:view") ||
+    permissionsList.includes("goals:manage");
 
   const userDirectorAreaIds = currentUser?.areas.map((a) => a.areaId) ?? [];
 
   // Verificación de acceso al Módulo de Objetivos (Puntos 4, 28 y 29)
-  if (!isGeneralAdmin && !isAreaDirector) {
+  if (!canAccessGoals) {
     return (
       <div className="bg-white min-h-screen flex items-center justify-center p-6">
         <div className="max-w-md w-full p-6 rounded-xl border border-blue-200 bg-blue-50/70 shadow-sm text-center space-y-4">

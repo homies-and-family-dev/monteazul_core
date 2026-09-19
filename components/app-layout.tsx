@@ -51,24 +51,28 @@ export default async function AppLayout({
     rolesList.includes("Gerencia") ||
     permissionsList.includes("masters:manage_roles");
 
-  const isAreaDirector =
-    rolesList.includes("Director de Área") ||
-    rolesList.some((r) => r.toLowerCase().includes("director"));
-
   const isMarketingMember = areasList.includes("Marketing");
   const isOtherAreaDirector =
     rolesList.some((r) => r.toLowerCase().includes("director")) &&
     !areasList.includes("Marketing");
 
+  // Estrategia y Gerencia:
+  // Control estricto por permisos de la matriz de roles configurada en el sistema
   const canAccessManagement =
     isGeneralAdmin ||
-    isAreaDirector ||
-    permissionsList.includes("management:view") ||
-    permissionsList.includes("goals:view");
+    permissionsList.includes("management:view");
 
+  const canAccessGoals =
+    isGeneralAdmin ||
+    permissionsList.includes("goals:view") ||
+    permissionsList.includes("goals:manage");
+
+  const canAccessStrategySection =
+    canAccessManagement || canAccessGoals;
+
+  // Configuración y Maestros:
   const canAccessMasters =
     isGeneralAdmin ||
-    isAreaDirector ||
     permissionsList.includes("masters:view") ||
     permissionsList.includes("masters:manage_catalogs") ||
     permissionsList.includes("masters:manage_roles");
@@ -98,6 +102,8 @@ export default async function AppLayout({
   const permissions = {
     isGeneralAdmin,
     canAccessManagement,
+    canAccessGoals,
+    canAccessStrategySection,
     canAccessMasters,
     canAccessMarketing,
     canAccessMarketingCampaigns,

@@ -70,9 +70,9 @@ export default async function MastersPage({
 
   const canAccessMasters =
     isGeneralAdmin ||
-    isAreaDirector ||
     userPermissions.includes("masters:view") ||
-    userPermissions.includes("masters:manage_catalogs");
+    userPermissions.includes("masters:manage_catalogs") ||
+    userPermissions.includes("masters:manage_roles");
 
   // Restricción de acceso general
   if (!canAccessMasters) {

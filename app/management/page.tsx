@@ -30,27 +30,42 @@ export default async function ManagementDashboardPage({ searchParams }: PageProp
   const currentUser = await prisma.user.findUnique({
     where: { id: currentUserId },
     include: {
-      roles: { include: { role: true } },
+      roles: {
+        include: {
+          role: {
+            include: {
+              permissions: {
+                include: { permission: true },
+              },
+            },
+          },
+        },
+      },
       areas: { include: { area: true } },
     },
   });
 
-  const isGeneralAdmin =
-    currentUser?.roles.some(
-      (r) => r.role.name === "Administrador General" || r.role.name === "Gerencia"
-    ) ?? false;
+  const rolesList = currentUser?.roles.map((r) => r.role.name) ?? [];
+  const permissionsList = Array.from(
+    new Set(
+      currentUser?.roles.flatMap((r) =>
+        r.role.permissions.map((p) => p.permission.key)
+      ) ?? []
+    )
+  );
 
-  const isAreaDirector =
-    currentUser?.roles.some(
-      (r) =>
-        r.role.name === "Director de Área" ||
-        r.role.name.toLowerCase().includes("director")
-    ) ?? false;
+  const isGeneralAdmin =
+    rolesList.includes("Administrador General") ||
+    rolesList.includes("Gerencia") ||
+    permissionsList.includes("masters:manage_roles");
+
+  const canAccessManagement =
+    isGeneralAdmin || permissionsList.includes("management:view");
 
   const directorAreaIds = currentUser?.areas.map((a) => a.areaId) ?? [];
 
   // Verificación de acceso al Módulo Gerencial (Puntos 4, 26, 27 y 28)
-  if (!isGeneralAdmin && !isAreaDirector) {
+  if (!canAccessManagement) {
     return (
       <div className="bg-white min-h-screen flex items-center justify-center p-6">
         <div className="max-w-md w-full p-6 rounded-xl border border-blue-200 bg-blue-50/70 shadow-sm text-center space-y-4">
@@ -58,7 +73,7 @@ export default async function ManagementDashboardPage({ searchParams }: PageProp
             Acceso Restringido al Módulo Gerencial
           </h2>
           <p className="text-xs text-slate-700 leading-relaxed">
-            El Módulo Gerencial Transversal y sus cuadros de mando de analítica corporativa están reservados exclusivamente para la Gerencia General, la Administración y las Direcciones de Área.
+            El Módulo Gerencial Transversal y sus cuadros de mando de analítica corporativa están reservados exclusivamente para usuarios con el permiso de analítica gerencial habilitado o la Administración General.
           </p>
           <div>
             <Link

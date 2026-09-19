@@ -13,28 +13,43 @@ async function checkGoalsAccess() {
   const currentUser = await prisma.user.findUnique({
     where: { id: session.user.id },
     include: {
-      roles: { include: { role: true } },
+      roles: {
+        include: {
+          role: {
+            include: {
+              permissions: {
+                include: { permission: true },
+              },
+            },
+          },
+        },
+      },
       areas: { include: { area: true } },
     },
   });
 
+  const rolesList = currentUser?.roles.map((r) => r.role.name) ?? [];
+  const permissionsList = Array.from(
+    new Set(
+      currentUser?.roles.flatMap((r) =>
+        r.role.permissions.map((p) => p.permission.key)
+      ) ?? []
+    )
+  );
+
   const isGeneralAdmin =
-    currentUser?.roles.some(
-      (r) => r.role.name === "Administrador General" || r.role.name === "Gerencia"
-    ) ?? false;
+    rolesList.includes("Administrador General") ||
+    rolesList.includes("Gerencia") ||
+    permissionsList.includes("masters:manage_roles");
 
-  const isAreaDirector =
-    currentUser?.roles.some(
-      (r) =>
-        r.role.name === "Director de Área" ||
-        r.role.name.toLowerCase().includes("director")
-    ) ?? false;
+  const canManageGoals =
+    isGeneralAdmin || permissionsList.includes("goals:manage");
 
-  if (!isGeneralAdmin && !isAreaDirector) {
-    throw new Error("Acceso no autorizado al módulo de Objetivos.");
+  if (!canManageGoals) {
+    throw new Error("Acceso no autorizado para gestionar o crear Objetivos.");
   }
 
-  return { userId: session.user.id, isGeneralAdmin, isAreaDirector, currentUser };
+  return { userId: session.user.id, isGeneralAdmin, currentUser };
 }
 
 export async function createGoal(formData: FormData) {

@@ -14,6 +14,8 @@ interface UserProfile {
 interface UserPermissions {
   isGeneralAdmin: boolean;
   canAccessManagement: boolean;
+  canAccessGoals?: boolean;
+  canAccessStrategySection?: boolean;
   canAccessMasters: boolean;
   canAccessMarketing: boolean;
   canAccessMarketingCampaigns?: boolean;
@@ -384,7 +386,7 @@ export default function SidebarShell({
           </div>
 
           {/* GRUPO 2: ESTRATEGIA Y GERENCIA (Directores y Gerencia) */}
-          {permissions.canAccessManagement && (
+          {(permissions.canAccessStrategySection ?? (permissions.canAccessManagement || (permissions.canAccessGoals ?? true))) && (
             <div>
               {!isCollapsed ? (
                 <div className="flex items-center justify-between px-3 pb-1">
@@ -406,31 +408,35 @@ export default function SidebarShell({
 
               {(!isCollapsed ? managementOpen : true) && (
                 <div className="space-y-1">
-                  <Link
-                    href="/management"
-                    title={isCollapsed ? "Módulo Gerencial y Reportes" : undefined}
-                    className={`flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
-                      isRouteActive("/management", true)
-                        ? "bg-blue-700 text-white shadow-xs"
-                        : "text-slate-700 hover:bg-blue-100/80 hover:text-blue-950"
-                    } ${isCollapsed ? "justify-center px-2" : ""}`}
-                  >
-                    <IconChartBar className="w-4 h-4 shrink-0" />
-                    {!isCollapsed && <span className="truncate">Módulo Gerencial</span>}
-                  </Link>
+                  {permissions.canAccessManagement && (
+                    <Link
+                      href="/management"
+                      title={isCollapsed ? "Módulo Gerencial y Reportes" : undefined}
+                      className={`flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
+                        isRouteActive("/management", true)
+                          ? "bg-blue-700 text-white shadow-xs"
+                          : "text-slate-700 hover:bg-blue-100/80 hover:text-blue-950"
+                      } ${isCollapsed ? "justify-center px-2" : ""}`}
+                    >
+                      <IconChartBar className="w-4 h-4 shrink-0" />
+                      {!isCollapsed && <span className="truncate">Módulo Gerencial</span>}
+                    </Link>
+                  )}
 
-                  <Link
-                    href="/goals"
-                    title={isCollapsed ? "Objetivos Gerenciales y de Área" : undefined}
-                    className={`flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
-                      isRouteActive("/goals", true)
-                        ? "bg-blue-700 text-white shadow-xs"
-                        : "text-slate-700 hover:bg-blue-100/80 hover:text-blue-950"
-                    } ${isCollapsed ? "justify-center px-2" : ""}`}
-                  >
-                    <IconTarget className="w-4 h-4 shrink-0" />
-                    {!isCollapsed && <span className="truncate">Objetivos de Área</span>}
-                  </Link>
+                  {(permissions.canAccessGoals ?? true) && (
+                    <Link
+                      href="/goals"
+                      title={isCollapsed ? "Objetivos Gerenciales y de Área" : undefined}
+                      className={`flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
+                        isRouteActive("/goals", true)
+                          ? "bg-blue-700 text-white shadow-xs"
+                          : "text-slate-700 hover:bg-blue-100/80 hover:text-blue-950"
+                      } ${isCollapsed ? "justify-center px-2" : ""}`}
+                    >
+                      <IconTarget className="w-4 h-4 shrink-0" />
+                      {!isCollapsed && <span className="truncate">Objetivos de Área</span>}
+                    </Link>
+                  )}
                 </div>
               )}
             </div>
