@@ -773,7 +773,7 @@ export default function EquipmentView({
                     <div className="flex flex-wrap items-center justify-between gap-2 pt-2.5 border-t border-slate-100">
                       <div className="flex flex-wrap items-center gap-2">
                         {/* Indicador F-MKT-01 */}
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1.5">
                           <Link
                             href={`/marketing/equipment/actas/${loan.id}?format=F-MKT-01`}
                             className={`inline-flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-bold border transition-colors ${
@@ -788,25 +788,24 @@ export default function EquipmentView({
                             <span>F-MKT-01 (Entrega)</span>
                             <span className="text-[10px] font-mono">
                               {loan.departureDeliveredSignedAt && loan.departureReceivedSignedAt
-                                ? "✓ 2/2"
+                                ? "2/2"
                                 : loan.departureDeliveredSignedAt || loan.departureReceivedSignedAt
-                                ? "⏳ 1/2"
+                                ? "1/2"
                                 : "Pendiente"}
                             </span>
                           </Link>
                           <button
                             type="button"
                             onClick={() => setActaModalLoan({ loan, type: "F-MKT-01" })}
-                            className="p-1 text-slate-400 hover:text-blue-700 text-xs"
-                            title="Vista previa rápida"
+                            className="px-2.5 py-1 rounded text-[11px] font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-300 transition-colors shadow-2xs"
                           >
-                            👁️
+                            Vista Previa
                           </button>
                         </div>
 
                         {/* Indicador F-MKT-02 */}
                         {loan.status === "Entregado" && (
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-1.5">
                             <Link
                               href={`/marketing/equipment/actas/${loan.id}?format=F-MKT-02`}
                               className={`inline-flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-bold border transition-colors ${
@@ -821,19 +820,18 @@ export default function EquipmentView({
                               <span>F-MKT-02 (Devolución)</span>
                               <span className="text-[10px] font-mono">
                                 {loan.returnDeliveredSignedAt && loan.returnReceivedSignedAt
-                                  ? "✓ 2/2"
+                                  ? "2/2"
                                   : loan.returnDeliveredSignedAt || loan.returnReceivedSignedAt
-                                  ? "⏳ 1/2"
+                                  ? "1/2"
                                   : "Pendiente"}
                               </span>
                             </Link>
                             <button
                               type="button"
                               onClick={() => setActaModalLoan({ loan, type: "F-MKT-02" })}
-                              className="p-1 text-slate-400 hover:text-blue-700 text-xs"
-                              title="Vista previa rápida"
+                              className="px-2.5 py-1 rounded text-[11px] font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-300 transition-colors shadow-2xs"
                             >
-                              👁️
+                              Vista Previa
                             </button>
                           </div>
                         )}
@@ -1738,7 +1736,7 @@ export default function EquipmentView({
                 href={`/marketing/equipment/actas/${actaModalLoan.loan.id}?format=${actaModalLoan.type}`}
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs shadow-xs transition-colors"
               >
-                <span>🖋️ Abrir Acta Completa y Firmar Digitalmente</span>
+                <span>Abrir Acta Completa y Firmar Digitalmente</span>
               </Link>
               <div className="flex items-center gap-2">
                 <button
