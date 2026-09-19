@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import {
   createEquipment,
   updateEquipment,
@@ -30,9 +31,9 @@ export interface LoanItem {
   id: string;
   folio: string;
   purpose: string;
-  startDate: Date;
-  expectedReturnDate: Date;
-  actualReturnDate: Date | null;
+  startDate: Date | string;
+  expectedReturnDate: Date | string;
+  actualReturnDate: Date | string | null;
   status: string;
   borrowerId: string;
   borrower: { id: string; name: string; email: string };
@@ -46,6 +47,24 @@ export interface LoanItem {
   departurePhotoUrl: string | null;
   returnNotes: string | null;
   returnPhotoUrl: string | null;
+
+  // Firmas Digitales
+  departureDeliveredSignedAt?: Date | string | null;
+  departureDeliveredSignedById?: string | null;
+  departureDeliveredSignedBy?: { id: string; name: string; email: string } | null;
+  departureReceivedSignedAt?: Date | string | null;
+  departureReceivedSignedById?: string | null;
+  departureReceivedSignedBy?: { id: string; name: string; email: string } | null;
+  departureSignatureHash?: string | null;
+
+  returnDeliveredSignedAt?: Date | string | null;
+  returnDeliveredSignedById?: string | null;
+  returnDeliveredSignedBy?: { id: string; name: string; email: string } | null;
+  returnReceivedSignedAt?: Date | string | null;
+  returnReceivedSignedById?: string | null;
+  returnReceivedSignedBy?: { id: string; name: string; email: string } | null;
+  returnSignatureHash?: string | null;
+
   items: Array<{
     id: string;
     equipmentId: string;
@@ -62,6 +81,7 @@ interface Props {
   marketingUsers: Array<{ id: string; name: string; email: string }>;
   coreRequests: Array<{ id: string; ticketNumber: string; title: string }>;
   canManage: boolean;
+  currentUserId?: string;
 }
 
 const CATEGORIES = [
@@ -659,27 +679,73 @@ export default function EquipmentView({
                       </div>
                     </div>
 
-                    {/* Botones de acción y Actas */}
-                    <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100">
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => setActaModalLoan({ loan, type: "F-MKT-01" })}
-                          className="text-[11px] font-semibold text-blue-700 hover:text-blue-900 underline"
-                        >
-                          Acta Entrega F-MKT-01
-                        </button>
+                    {/* Botones de acción y Actas con Firma Digital */}
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-2.5 border-t border-slate-100">
+                      <div className="flex flex-wrap items-center gap-2">
+                        {/* Indicador F-MKT-01 */}
+                        <div className="flex items-center gap-1">
+                          <Link
+                            href={`/marketing/equipment/actas/${loan.id}?format=F-MKT-01`}
+                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-bold border transition-colors ${
+                              loan.departureDeliveredSignedAt && loan.departureReceivedSignedAt
+                                ? "bg-emerald-50 text-emerald-900 border-emerald-300 hover:bg-emerald-100"
+                                : loan.departureDeliveredSignedAt || loan.departureReceivedSignedAt
+                                ? "bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100"
+                                : "bg-blue-50 text-blue-900 border-blue-200 hover:bg-blue-100"
+                            }`}
+                            title="Abrir acta oficial F-MKT-01 y firmar digitalmente"
+                          >
+                            <span>F-MKT-01 (Entrega)</span>
+                            <span className="text-[10px] font-mono">
+                              {loan.departureDeliveredSignedAt && loan.departureReceivedSignedAt
+                                ? "✓ 2/2"
+                                : loan.departureDeliveredSignedAt || loan.departureReceivedSignedAt
+                                ? "⏳ 1/2"
+                                : "Pendiente"}
+                            </span>
+                          </Link>
+                          <button
+                            type="button"
+                            onClick={() => setActaModalLoan({ loan, type: "F-MKT-01" })}
+                            className="p-1 text-slate-400 hover:text-blue-700 text-xs"
+                            title="Vista previa rápida"
+                          >
+                            👁️
+                          </button>
+                        </div>
+
+                        {/* Indicador F-MKT-02 */}
                         {loan.status === "Entregado" && (
-                          <>
-                            <span className="text-slate-300">|</span>
+                          <div className="flex items-center gap-1">
+                            <Link
+                              href={`/marketing/equipment/actas/${loan.id}?format=F-MKT-02`}
+                              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-bold border transition-colors ${
+                                loan.returnDeliveredSignedAt && loan.returnReceivedSignedAt
+                                  ? "bg-emerald-50 text-emerald-900 border-emerald-300 hover:bg-emerald-100"
+                                  : loan.returnDeliveredSignedAt || loan.returnReceivedSignedAt
+                                  ? "bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100"
+                                  : "bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100"
+                              }`}
+                              title="Abrir acta oficial F-MKT-02 y firmar digitalmente"
+                            >
+                              <span>F-MKT-02 (Devolución)</span>
+                              <span className="text-[10px] font-mono">
+                                {loan.returnDeliveredSignedAt && loan.returnReceivedSignedAt
+                                  ? "✓ 2/2"
+                                  : loan.returnDeliveredSignedAt || loan.returnReceivedSignedAt
+                                  ? "⏳ 1/2"
+                                  : "Pendiente"}
+                              </span>
+                            </Link>
                             <button
                               type="button"
                               onClick={() => setActaModalLoan({ loan, type: "F-MKT-02" })}
-                              className="text-[11px] font-semibold text-blue-700 hover:text-blue-900 underline"
+                              className="p-1 text-slate-400 hover:text-blue-700 text-xs"
+                              title="Vista previa rápida"
                             >
-                              Acta F-MKT-02
+                              👁️
                             </button>
-                          </>
+                          </div>
                         )}
                       </div>
 
@@ -779,20 +845,28 @@ export default function EquipmentView({
                         </span>
                       </td>
                       <td className="p-3 text-right whitespace-nowrap space-x-1.5">
-                        <button
-                          type="button"
-                          onClick={() => setActaModalLoan({ loan, type: "F-MKT-01" })}
-                          className="px-2 py-1 rounded bg-blue-50 text-blue-900 border border-blue-200 font-semibold text-[11px]"
+                        <Link
+                          href={`/marketing/equipment/actas/${loan.id}?format=F-MKT-01`}
+                          className={`inline-block px-2.5 py-1 rounded font-semibold text-[11px] border transition-colors ${
+                            loan.departureDeliveredSignedAt && loan.departureReceivedSignedAt
+                              ? "bg-emerald-50 text-emerald-900 border-emerald-300 hover:bg-emerald-100"
+                              : "bg-blue-50 text-blue-900 border-blue-200 hover:bg-blue-100"
+                          }`}
+                          title="Abrir acta de entrega F-MKT-01"
                         >
-                          F-MKT-01
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setActaModalLoan({ loan, type: "F-MKT-02" })}
-                          className="px-2 py-1 rounded bg-emerald-50 text-emerald-900 border border-emerald-200 font-semibold text-[11px]"
+                          F-MKT-01 {loan.departureDeliveredSignedAt && loan.departureReceivedSignedAt ? "✓" : ""}
+                        </Link>
+                        <Link
+                          href={`/marketing/equipment/actas/${loan.id}?format=F-MKT-02`}
+                          className={`inline-block px-2.5 py-1 rounded font-semibold text-[11px] border transition-colors ${
+                            loan.returnDeliveredSignedAt && loan.returnReceivedSignedAt
+                              ? "bg-emerald-50 text-emerald-900 border-emerald-300 hover:bg-emerald-100"
+                              : "bg-emerald-50 text-emerald-900 border-emerald-200 hover:bg-emerald-100"
+                          }`}
+                          title="Abrir acta de devolución F-MKT-02"
                         >
-                          F-MKT-02
-                        </button>
+                          F-MKT-02 {loan.returnDeliveredSignedAt && loan.returnReceivedSignedAt ? "✓" : ""}
+                        </Link>
                       </td>
                     </tr>
                   ))}
@@ -1564,21 +1638,29 @@ export default function EquipmentView({
             </div>
 
             {/* Botones de acción */}
-            <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-200 print:hidden">
-              <button
-                type="button"
-                onClick={() => setActaModalLoan(null)}
-                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900"
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-4 border-t border-slate-200 print:hidden">
+              <Link
+                href={`/marketing/equipment/actas/${actaModalLoan.loan.id}?format=${actaModalLoan.type}`}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs shadow-xs transition-colors"
               >
-                Cerrar
-              </button>
-              <button
-                type="button"
-                onClick={() => window.print()}
-                className="px-5 py-2 rounded-lg bg-blue-700 hover:bg-blue-800 text-white font-semibold text-xs shadow-xs"
-              >
-                Imprimir / Guardar PDF
-              </button>
+                <span>🖋️ Abrir Acta Completa y Firmar Digitalmente</span>
+              </Link>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setActaModalLoan(null)}
+                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900"
+                >
+                  Cerrar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="px-5 py-2 rounded-lg bg-blue-700 hover:bg-blue-800 text-white font-semibold text-xs shadow-xs"
+                >
+                  Imprimir / Guardar PDF
+                </button>
+              </div>
             </div>
           </div>
         </div>

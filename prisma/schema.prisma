@@ -67,6 +67,11 @@ model User {
   equipmentLoansBorrower    EquipmentLoan[] @relation("EquipmentBorrower")
   equipmentLoansAuthorized  EquipmentLoan[] @relation("EquipmentLoanAuthorizer")
 
+  loansDepartureDeliveredSigned EquipmentLoan[] @relation("LoanDepartureDeliveredSigner")
+  loansDepartureReceivedSigned  EquipmentLoan[] @relation("LoanDepartureReceivedSigner")
+  loansReturnDeliveredSigned    EquipmentLoan[] @relation("LoanReturnDeliveredSigner")
+  loansReturnReceivedSigned     EquipmentLoan[] @relation("LoanReturnReceivedSigner")
+
   goalsResponsible          Goal[] @relation("GoalResponsible")
   goalsCreated              Goal[] @relation("GoalCreator")
   goalProgressUpdates       GoalProgressUpdate[]
@@ -354,6 +359,28 @@ model EquipmentLoan {
   departurePhotoUrl  String?             // Fotos antes de la entrega (F-MKT-01)
   returnNotes        String?             // Observaciones en la recepción/devolución
   returnPhotoUrl     String?             // Fotos al devolver (F-MKT-02)
+
+  // Firmas Digitales F-MKT-01 (Acta de Entrega de Equipos)
+  departureDeliveredSignedAt     DateTime?
+  departureDeliveredSignedById   String?
+  departureDeliveredSignedBy     User?               @relation("LoanDepartureDeliveredSigner", fields: [departureDeliveredSignedById], references: [id])
+  departureDeliveredSignature    String?             @db.Text // Firma trazada / Base64 o sello institucional
+  departureReceivedSignedAt      DateTime?
+  departureReceivedSignedById    String?
+  departureReceivedSignedBy      User?               @relation("LoanDepartureReceivedSigner", fields: [departureReceivedSignedById], references: [id])
+  departureReceivedSignature     String?             @db.Text // Firma trazada / Base64
+  departureSignatureHash         String?             // Hash criptográfico de verificación SHA-256
+
+  // Firmas Digitales F-MKT-02 (Acta de Devolución e Inspección de Equipos)
+  returnDeliveredSignedAt        DateTime?
+  returnDeliveredSignedById      String?
+  returnDeliveredSignedBy        User?               @relation("LoanReturnDeliveredSigner", fields: [returnDeliveredSignedById], references: [id])
+  returnDeliveredSignature       String?             @db.Text // Firma trazada / Base64
+  returnReceivedSignedAt         DateTime?
+  returnReceivedSignedById       String?
+  returnReceivedSignedBy         User?               @relation("LoanReturnReceivedSigner", fields: [returnReceivedSignedById], references: [id])
+  returnReceivedSignature        String?             @db.Text // Firma trazada / Base64 o sello institucional
+  returnSignatureHash            String?             // Hash criptográfico de verificación SHA-256
 
   items              EquipmentLoanItem[]
 

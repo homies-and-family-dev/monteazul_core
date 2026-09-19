@@ -3,6 +3,7 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { generateSignatureHash } from "@/lib/digital-signature";
 
 async function checkMarketingAccess() {
   const session = await auth();
@@ -13,18 +14,38 @@ async function checkMarketingAccess() {
   const currentUser = await prisma.user.findUnique({
     where: { id: session.user.id },
     include: {
-      roles: { include: { role: true } },
+      roles: {
+        include: {
+          role: {
+            include: {
+              permissions: {
+                include: { permission: true },
+              },
+            },
+          },
+        },
+      },
       areas: { include: { area: true } },
     },
   });
 
+  const rolesList = currentUser?.roles.map((r) => r.role.name) ?? [];
+  const permissionsList = Array.from(
+    new Set(
+      currentUser?.roles.flatMap((r) =>
+        r.role.permissions.map((p) => p.permission.key)
+      ) ?? []
+    )
+  );
+
   const isGeneralAdmin =
-    currentUser?.roles.some(
-      (r) => r.role.name === "Administrador General" || r.role.name === "Gerencia"
-    ) ?? false;
+    rolesList.includes("Administrador General") ||
+    rolesList.includes("Gerencia") ||
+    permissionsList.includes("masters:manage_roles");
 
   const isMarketingMember =
-    currentUser?.areas.some((a) => a.area.name === "Marketing") ?? false;
+    currentUser?.areas.some((a) => a.area.name === "Marketing") ||
+    permissionsList.includes("marketing:equipment");
 
   if (!isGeneralAdmin && !isMarketingMember) {
     throw new Error("Acceso restringido al módulo de equipos de Marketing.");
@@ -259,13 +280,14 @@ export async function createEquipmentLoan(formData: FormData) {
 }
 
 export async function authorizeAndDeliverLoan(formData: FormData) {
-  const { userId } = await checkMarketingAccess();
+  const { userId, currentUser } = await checkMarketingAccess();
 
   const loanId = formData.get("loanId") as string;
   if (!loanId) throw new Error("ID de préstamo requerido.");
 
   const departureNotes = (formData.get("departureNotes") as string)?.trim() || null;
   const departurePhotoUrl = (formData.get("departurePhotoUrl") as string)?.trim() || null;
+  const signatureData = (formData.get("signatureData") as string)?.trim() || null;
 
   const loan = await prisma.equipmentLoan.findUnique({
     where: { id: loanId },
@@ -277,7 +299,20 @@ export async function authorizeAndDeliverLoan(formData: FormData) {
     throw new Error(`El préstamo ya se encuentra en estado ${loan.status}.`);
   }
 
-  // Actualizar préstamo a Entregado (F-MKT-01)
+  const now = new Date();
+  const signatureHash = generateSignatureHash({
+    loanId: loan.id,
+    folio: loan.folio,
+    documentType: "F-MKT-01",
+    userId,
+    userName: currentUser?.name || "Custodio Marketing",
+    userEmail: currentUser?.email || "",
+    roleOrArea: "Custodio Marketing",
+    timestamp: now,
+    itemsCount: loan.items.length,
+  });
+
+  // Actualizar préstamo a Entregado (F-MKT-01) con firma del custodio
   await prisma.equipmentLoan.update({
     where: { id: loanId },
     data: {
@@ -285,6 +320,10 @@ export async function authorizeAndDeliverLoan(formData: FormData) {
       authorizedById: userId,
       departureNotes: departureNotes || loan.departureNotes,
       departurePhotoUrl: departurePhotoUrl || loan.departurePhotoUrl,
+      departureDeliveredSignedAt: now,
+      departureDeliveredSignedById: userId,
+      departureDeliveredSignature: signatureData || "Firma Digital Certificada - Custodio Marketing",
+      departureSignatureHash: signatureHash,
     },
   });
 
@@ -296,10 +335,11 @@ export async function authorizeAndDeliverLoan(formData: FormData) {
   });
 
   revalidatePath("/marketing/equipment");
+  revalidatePath(`/marketing/equipment/actas/${loanId}`);
 }
 
 export async function processLoanReturn(formData: FormData) {
-  await checkMarketingAccess();
+  const { userId, currentUser } = await checkMarketingAccess();
 
   const loanId = formData.get("loanId") as string;
   if (!loanId) throw new Error("ID de préstamo requerido.");
@@ -307,6 +347,7 @@ export async function processLoanReturn(formData: FormData) {
   const hasIssues = formData.get("hasIssues") === "true";
   const returnNotes = (formData.get("returnNotes") as string)?.trim() || null;
   const returnPhotoUrl = (formData.get("returnPhotoUrl") as string)?.trim() || null;
+  const signatureData = (formData.get("signatureData") as string)?.trim() || null;
 
   const loan = await prisma.equipmentLoan.findUnique({
     where: { id: loanId },
@@ -316,15 +357,32 @@ export async function processLoanReturn(formData: FormData) {
   if (!loan) throw new Error("Préstamo no encontrado.");
 
   const finalStatus = hasIssues ? "Devuelto con Novedad" : "Devuelto";
+  const now = new Date();
 
-  // Registrar devolución (F-MKT-02)
+  const returnHash = generateSignatureHash({
+    loanId: loan.id,
+    folio: loan.folio,
+    documentType: "F-MKT-02",
+    userId,
+    userName: currentUser?.name || "Custodio Marketing",
+    userEmail: currentUser?.email || "",
+    roleOrArea: "Custodio Receptor Marketing",
+    timestamp: now,
+    itemsCount: loan.items.length,
+  });
+
+  // Registrar devolución (F-MKT-02) con firma de inspección del custodio
   await prisma.equipmentLoan.update({
     where: { id: loanId },
     data: {
       status: finalStatus,
-      actualReturnDate: new Date(),
+      actualReturnDate: now,
       returnNotes,
       returnPhotoUrl,
+      returnReceivedSignedAt: now,
+      returnReceivedSignedById: userId,
+      returnReceivedSignature: signatureData || "Firma Digital de Inspección - Custodio Marketing",
+      returnSignatureHash: returnHash,
     },
   });
 
@@ -338,4 +396,170 @@ export async function processLoanReturn(formData: FormData) {
   });
 
   revalidatePath("/marketing/equipment");
+  revalidatePath(`/marketing/equipment/actas/${loanId}`);
+}
+
+export async function signLoanActa(formData: FormData) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    throw new Error("Debe iniciar sesión para firmar digitalmente el documento.");
+  }
+
+  const loanId = (formData.get("loanId") as string)?.trim();
+  const documentType = (formData.get("documentType") as string)?.trim() as "F-MKT-01" | "F-MKT-02";
+  const signRole = (formData.get("signRole") as string)?.trim() as "custodian" | "borrower";
+  const signatureData = (formData.get("signatureData") as string)?.trim() || null;
+
+  if (!loanId || !documentType || !signRole) {
+    throw new Error("Parámetros de firma incompletos.");
+  }
+
+  const currentUser = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    include: {
+      roles: {
+        include: {
+          role: {
+            include: {
+              permissions: {
+                include: { permission: true },
+              },
+            },
+          },
+        },
+      },
+      areas: { include: { area: true } },
+    },
+  });
+
+  if (!currentUser) throw new Error("Usuario no encontrado.");
+
+  const rolesList = currentUser.roles.map((r) => r.role.name);
+  const isGeneralAdmin =
+    rolesList.includes("Administrador General") ||
+    rolesList.includes("Gerencia") ||
+    currentUser.roles.some((r) =>
+      r.role.permissions.some((p) => p.permission.key === "masters:manage_roles")
+    );
+  const isMarketingMember =
+    currentUser.areas.some((a) => a.area.name === "Marketing") ||
+    currentUser.roles.some((r) =>
+      r.role.permissions.some((p) => p.permission.key === "marketing:equipment")
+    );
+
+  const loan = await prisma.equipmentLoan.findUnique({
+    where: { id: loanId },
+    include: {
+      items: true,
+      borrower: true,
+    },
+  });
+
+  if (!loan) throw new Error("Préstamo de equipos no encontrado.");
+
+  // Validar permisos según el rol que firma
+  if (signRole === "custodian") {
+    if (!isGeneralAdmin && !isMarketingMember) {
+      throw new Error("Solo el personal de Marketing o Dirección puede firmar como Custodio de Almacén.");
+    }
+  } else if (signRole === "borrower") {
+    if (loan.borrowerId !== session.user.id && !isGeneralAdmin) {
+      throw new Error(
+        `Solo el usuario asignado como solicitante (${loan.borrower.name}) o un Administrador General puede firmar la recepción/devolución.`
+      );
+    }
+  } else {
+    throw new Error("Rol de firma no válido.");
+  }
+
+  const now = new Date();
+  const signatureEffectiveData =
+    signatureData ||
+    `Firma Digital Certificada por ${currentUser.name} (${currentUser.email}) el ${now.toISOString()} bajo Política Cero Papel`;
+
+  const newHash = generateSignatureHash({
+    loanId: loan.id,
+    folio: loan.folio,
+    documentType,
+    userId: session.user.id,
+    userName: currentUser.name,
+    userEmail: currentUser.email,
+    roleOrArea: signRole === "custodian" ? "Custodio Marketing" : "Solicitante / Receptor",
+    timestamp: now,
+    itemsCount: loan.items.length,
+  });
+
+  if (documentType === "F-MKT-01") {
+    if (signRole === "custodian") {
+      await prisma.equipmentLoan.update({
+        where: { id: loanId },
+        data: {
+          departureDeliveredSignedAt: now,
+          departureDeliveredSignedById: session.user.id,
+          departureDeliveredSignature: signatureEffectiveData,
+          departureSignatureHash: newHash,
+          // Si estaba en solicitado, pasa a Entregado automáticamente
+          status: loan.status === "Solicitado" ? "Entregado" : loan.status,
+          authorizedById: loan.authorizedById || session.user.id,
+        },
+      });
+
+      // Asegurar que los equipos se marquen como prestados
+      const equipmentIds = loan.items.map((i) => i.equipmentId);
+      await prisma.equipment.updateMany({
+        where: { id: { in: equipmentIds } },
+        data: { status: "Prestado" },
+      });
+    } else {
+      // borrower
+      await prisma.equipmentLoan.update({
+        where: { id: loanId },
+        data: {
+          departureReceivedSignedAt: now,
+          departureReceivedSignedById: session.user.id,
+          departureReceivedSignature: signatureEffectiveData,
+          departureSignatureHash: newHash,
+        },
+      });
+    }
+  } else if (documentType === "F-MKT-02") {
+    if (signRole === "borrower") {
+      await prisma.equipmentLoan.update({
+        where: { id: loanId },
+        data: {
+          returnDeliveredSignedAt: now,
+          returnDeliveredSignedById: session.user.id,
+          returnDeliveredSignature: signatureEffectiveData,
+          returnSignatureHash: newHash,
+        },
+      });
+    } else {
+      // custodian
+      await prisma.equipmentLoan.update({
+        where: { id: loanId },
+        data: {
+          returnReceivedSignedAt: now,
+          returnReceivedSignedById: session.user.id,
+          returnReceivedSignature: signatureEffectiveData,
+          returnSignatureHash: newHash,
+          actualReturnDate: loan.actualReturnDate || now,
+          status: loan.status === "Entregado" ? "Devuelto" : loan.status,
+        },
+      });
+
+      // Si no hay novedad reportada, liberar equipos
+      if (loan.status !== "Devuelto con Novedad") {
+        const equipmentIds = loan.items.map((i) => i.equipmentId);
+        await prisma.equipment.updateMany({
+          where: { id: { in: equipmentIds } },
+          data: { status: "Disponible" },
+        });
+      }
+    }
+  }
+
+  revalidatePath("/marketing/equipment");
+  revalidatePath(`/marketing/equipment/actas/${loanId}`);
+
+  return { success: true, timestamp: now.toISOString(), hash: newHash };
 }

@@ -82,11 +82,15 @@ export default async function EquipmentPage() {
     orderBy: { code: "asc" },
   });
 
-  // Cargar préstamos con sus relaciones
+  // Cargar préstamos con sus relaciones y firmas digitales
   const loans = await prisma.equipmentLoan.findMany({
     include: {
       borrower: { select: { id: true, name: true, email: true } },
       authorizedBy: { select: { id: true, name: true } },
+      departureDeliveredSignedBy: { select: { id: true, name: true, email: true } },
+      departureReceivedSignedBy: { select: { id: true, name: true, email: true } },
+      returnDeliveredSignedBy: { select: { id: true, name: true, email: true } },
+      returnReceivedSignedBy: { select: { id: true, name: true, email: true } },
       task: { select: { id: true, title: true } },
       request: { select: { id: true, ticketNumber: true, title: true } },
       items: {
@@ -161,6 +165,7 @@ export default async function EquipmentPage() {
           marketingUsers={marketingUsers}
           coreRequests={coreRequests}
           canManage={isGeneralAdmin || isMarketingMember}
+          currentUserId={session.user.id}
         />
       </div>
     </div>
