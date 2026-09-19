@@ -36,6 +36,9 @@ export default function NewRequestForm({
   const [customType, setCustomType] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+
   // Tipos de solicitud filtrados por el área de destino seleccionada
   const availableTypes = requestTypes.filter(
     (t) => t.areaId === destinationAreaId || t.areaId === null
@@ -46,6 +49,11 @@ export default function NewRequestForm({
   return (
     <form
       action={async (formData) => {
+        const dueDateVal = String(formData.get("dueDate") ?? "").trim();
+        if (dueDateVal && dueDateVal < todayStr) {
+          alert("Inconsistencia de fecha: La fecha requerida de entrega no puede ser anterior a la fecha actual.");
+          return;
+        }
         setIsSubmitting(true);
         if (selectedType === "__other__") {
           formData.set("type", customType);
@@ -266,6 +274,7 @@ export default function NewRequestForm({
           <input
             type="date"
             name="dueDate"
+            min={todayStr}
             className="w-full rounded-lg border border-blue-300 bg-white px-3 py-2 text-sm text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
           />
         </div>

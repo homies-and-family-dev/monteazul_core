@@ -58,6 +58,15 @@ export async function createMarketingContent(formData: FormData) {
   // Combinar fecha y hora
   const scheduledDate = new Date(`${dateStr}T${timeStr}:00`);
 
+  // Regla institucional Cero Papel / Calidad: No permitir programar contenidos en el pasado
+  const now = new Date();
+  const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
+  if (scheduledDate < fiveMinutesAgo) {
+    throw new Error(
+      "Inconsistencia de fecha: No se permite programar publicaciones o contenidos con fechas u horas en el pasado."
+    );
+  }
+
   await prisma.marketingContent.create({
     data: {
       brand,

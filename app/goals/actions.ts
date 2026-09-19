@@ -85,6 +85,21 @@ export async function createGoal(formData: FormData) {
     areaId = null;
   }
 
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+
+  if (endDateStr < todayStr) {
+    throw new Error(
+      "Inconsistencia de fecha: La fecha límite proyectada para el objetivo no puede ser anterior a la fecha actual."
+    );
+  }
+
+  if (endDateStr < startDateStr) {
+    throw new Error(
+      "Inconsistencia de fecha: La fecha límite debe ser posterior o igual a la fecha de inicio del objetivo."
+    );
+  }
+
   const startDate = new Date(`${startDateStr}T00:00:00`);
   const endDate = new Date(`${endDateStr}T23:59:59`);
 
@@ -164,6 +179,12 @@ export async function updateGoal(formData: FormData) {
 
   if (scope === "Gerencial") {
     areaId = null;
+  }
+
+  if (endDateStr < startDateStr) {
+    throw new Error(
+      "Inconsistencia de fecha: La fecha límite debe ser posterior o igual a la fecha de inicio del objetivo."
+    );
   }
 
   const startDate = new Date(`${startDateStr}T00:00:00`);

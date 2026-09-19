@@ -156,11 +156,23 @@ export default function CalendarView({
   const [formAssignedToId, setFormAssignedToId] = useState("");
   const [formRequestId, setFormRequestId] = useState("");
 
+  const getTodayStr = () => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, "0");
+    const d = String(now.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  };
+  const todayStr = getTodayStr();
+
   const openCreateModal = (defaultDate?: string) => {
-    const todayStr = defaultDate || new Date().toISOString().slice(0, 10);
+    let initialDate = defaultDate || todayStr;
+    if (initialDate < todayStr) {
+      initialDate = todayStr;
+    }
     setEditingItem(null);
     setFormBrand("Monte Azul");
-    setFormDate(todayStr);
+    setFormDate(initialDate);
     setFormTime("09:00");
     setFormTitle("");
     setFormFormat("Carrusel");
@@ -205,6 +217,13 @@ export default function CalendarView({
     e.preventDefault();
     if (!formTitle.trim() || !formDate || formPlatforms.length === 0) {
       alert("Por favor complete el tema, la fecha programada y al menos una plataforma.");
+      return;
+    }
+
+    const scheduledDateTime = new Date(`${formDate}T${formTime || "00:00"}:00`);
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+    if (!editingItem && scheduledDateTime < fiveMinutesAgo) {
+      alert("Inconsistencia de fecha: No se permite programar publicaciones o contenidos con fechas u horas en el pasado.");
       return;
     }
 
@@ -652,7 +671,7 @@ export default function CalendarView({
                       {dayItem.date.getDate()}
                     </span>
 
-                    {canEdit && dayItem.isCurrentMonth && (
+                    {canEdit && dayItem.isCurrentMonth && dayItem.dateStr >= todayStr && (
                       <button
                         type="button"
                         onClick={() => openCreateModal(dayItem.dateStr)}
@@ -738,7 +757,7 @@ export default function CalendarView({
 
                   {/* Contenidos del día */}
                   <div className="p-2 space-y-2 flex-1 bg-white">
-                    {canEdit && (
+                    {canEdit && wDay.dateStr >= todayStr && (
                       <button
                         type="button"
                         onClick={() => openCreateModal(wDay.dateStr)}
@@ -1168,6 +1187,7 @@ export default function CalendarView({
                   <input
                     type="date"
                     required
+                    min={editingItem ? undefined : todayStr}
                     value={formDate}
                     onChange={(e) => setFormDate(e.target.value)}
                     className="w-full rounded-lg border border-blue-300 bg-white px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"

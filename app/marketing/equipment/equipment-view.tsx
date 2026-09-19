@@ -243,12 +243,26 @@ export default function EquipmentView({
     }
   };
 
+  const getTodayStr = () => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, "0");
+    const d = String(now.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  };
+  const todayStr = getTodayStr();
+
   const openLoanModal = () => {
+    const now = new Date();
+    const currentHours = String(now.getHours()).padStart(2, "0");
+    const currentMinutes = String(now.getMinutes()).padStart(2, "0");
+    const currentTimeStr = `${currentHours}:${currentMinutes}`;
+
     setLoanPurpose("");
     setLoanBorrowerId(activeUserId);
-    setLoanStartDate(new Date().toISOString().slice(0, 10));
-    setLoanStartTime("08:30");
-    setLoanExpectedReturnDate(new Date().toISOString().slice(0, 10));
+    setLoanStartDate(todayStr);
+    setLoanStartTime(currentTimeStr);
+    setLoanExpectedReturnDate(todayStr);
     setLoanExpectedReturnTime("18:00");
     setLoanRequestId("");
     setLoanSelectedEquipments([]);
@@ -261,6 +275,21 @@ export default function EquipmentView({
     e.preventDefault();
     if (!loanPurpose.trim() || loanSelectedEquipments.length === 0) {
       alert("Ingrese el motivo del préstamo y seleccione al menos un equipo.");
+      return;
+    }
+
+    const startDateTime = new Date(`${loanStartDate}T${loanStartTime}:00`);
+    const expectedReturnDateTime = new Date(`${loanExpectedReturnDate}T${loanExpectedReturnTime}:00`);
+    const now = new Date();
+    const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
+
+    if (startDateTime < fiveMinutesAgo) {
+      alert("Inconsistencia de fecha: La fecha y hora de entrega no puede ser anterior al momento actual.");
+      return;
+    }
+
+    if (expectedReturnDateTime <= startDateTime) {
+      alert("Inconsistencia de fecha: La fecha y hora proyectada de devolución debe ser posterior a la fecha y hora de entrega.");
       return;
     }
 
@@ -1123,8 +1152,15 @@ export default function EquipmentView({
                     <input
                       type="date"
                       required
+                      min={todayStr}
                       value={loanStartDate}
-                      onChange={(e) => setLoanStartDate(e.target.value)}
+                      onChange={(e) => {
+                        const newStartDate = e.target.value;
+                        setLoanStartDate(newStartDate);
+                        if (loanExpectedReturnDate && loanExpectedReturnDate < newStartDate) {
+                          setLoanExpectedReturnDate(newStartDate);
+                        }
+                      }}
                       className="w-2/3 rounded-lg border border-blue-300 bg-white px-2 py-1.5 text-xs text-slate-900"
                     />
                     <input
@@ -1142,6 +1178,7 @@ export default function EquipmentView({
                     <input
                       type="date"
                       required
+                      min={loanStartDate || todayStr}
                       value={loanExpectedReturnDate}
                       onChange={(e) => setLoanExpectedReturnDate(e.target.value)}
                       className="w-2/3 rounded-lg border border-blue-300 bg-white px-2 py-1.5 text-xs text-slate-900"

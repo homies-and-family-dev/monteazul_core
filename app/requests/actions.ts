@@ -33,7 +33,21 @@ export async function createRequest(formData: FormData) {
   const count = await prisma.request.count({ where: { destinationAreaId } });
   const ticketNumber = `${destinationArea.code}-${String(count + 1).padStart(6, "0")}`;
 
-  const dueDate = dueDateRaw ? new Date(String(dueDateRaw)) : null;
+  let dueDate: Date | null = null;
+  if (dueDateRaw) {
+    const dueDateStr = String(dueDateRaw).trim();
+    if (dueDateStr) {
+      // Regla de Calidad: La fecha requerida proyectada no puede ser anterior a la fecha actual
+      const now = new Date();
+      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+      if (dueDateStr < todayStr) {
+        throw new Error(
+          "Inconsistencia de fecha: La fecha requerida de entrega no puede ser anterior a la fecha actual."
+        );
+      }
+      dueDate = new Date(`${dueDateStr}T23:59:59`);
+    }
+  }
 
   const newRequest = await prisma.request.create({
     data: {

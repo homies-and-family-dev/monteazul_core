@@ -111,6 +111,15 @@ export default function GoalsView({
     }));
   };
 
+  const getTodayStr = () => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, "0");
+    const d = String(now.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  };
+  const todayStr = getTodayStr();
+
   const openCreateGoalModal = () => {
     setEditingGoal(null);
     setFormTitle("");
@@ -118,11 +127,14 @@ export default function GoalsView({
     setFormScope("Área");
     setFormHorizon("Corto Plazo");
     setFormPeriod("Q1 2026");
-    setFormStartDate(new Date().toISOString().slice(0, 10));
+    setFormStartDate(todayStr);
 
     const future = new Date();
     future.setMonth(future.getMonth() + 3);
-    setFormEndDate(future.toISOString().slice(0, 10));
+    const fy = future.getFullYear();
+    const fm = String(future.getMonth() + 1).padStart(2, "0");
+    const fd = String(future.getDate()).padStart(2, "0");
+    setFormEndDate(`${fy}-${fm}-${fd}`);
 
     setFormIndicator("Tasa de Cierre a Satisfacción");
     setFormTargetValue("90");
@@ -157,6 +169,16 @@ export default function GoalsView({
     e.preventDefault();
     if (!formTitle.trim() || !formPeriod.trim() || !formIndicator.trim()) {
       alert("Por favor complete los campos obligatorios del objetivo.");
+      return;
+    }
+
+    if (!editingGoal && formEndDate < todayStr) {
+      alert("Inconsistencia de fecha: La fecha límite proyectada para el objetivo no puede ser anterior a la fecha actual.");
+      return;
+    }
+
+    if (formEndDate < formStartDate) {
+      alert("Inconsistencia de fecha: La fecha límite debe ser posterior o igual a la fecha de inicio del objetivo.");
       return;
     }
 
@@ -705,7 +727,13 @@ export default function GoalsView({
                     type="date"
                     required
                     value={formStartDate}
-                    onChange={(e) => setFormStartDate(e.target.value)}
+                    onChange={(e) => {
+                      const newStart = e.target.value;
+                      setFormStartDate(newStart);
+                      if (formEndDate && formEndDate < newStart) {
+                        setFormEndDate(newStart);
+                      }
+                    }}
                     className="w-full rounded-lg border border-blue-300 bg-white px-3 py-2 text-xs text-slate-900"
                   />
                 </div>
@@ -714,6 +742,7 @@ export default function GoalsView({
                   <input
                     type="date"
                     required
+                    min={editingGoal ? formStartDate : (formStartDate > todayStr ? formStartDate : todayStr)}
                     value={formEndDate}
                     onChange={(e) => setFormEndDate(e.target.value)}
                     className="w-full rounded-lg border border-blue-300 bg-white px-3 py-2 text-xs text-slate-900"

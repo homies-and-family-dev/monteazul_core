@@ -208,8 +208,20 @@ export async function createEquipmentLoan(formData: FormData) {
   const startDate = new Date(`${startDateStr}T${startTimeStr}:00`);
   const expectedReturnDate = new Date(`${expectedReturnDateStr}T${expectedReturnTimeStr}:00`);
 
+  // Regla institucional Cero Papel / Calidad: No permitir fechas proyectadas en el pasado
+  const now = new Date();
+  const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
+
+  if (startDate < fiveMinutesAgo) {
+    throw new Error(
+      "Inconsistencia de fecha: No se permite registrar solicitudes de préstamo con fechas u horas en el pasado. La entrega debe proyectarse a partir del momento actual."
+    );
+  }
+
   if (expectedReturnDate <= startDate) {
-    throw new Error("La fecha de devolución debe ser posterior a la fecha de entrega.");
+    throw new Error(
+      "Inconsistencia de fecha: La fecha y hora proyectada de devolución debe ser posterior a la fecha y hora de entrega."
+    );
   }
 
   // REGLA CRÍTICA DE NEGOCIO (Punto 1006):
