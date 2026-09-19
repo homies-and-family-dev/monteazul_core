@@ -308,6 +308,9 @@ export async function authorizeAndDeliverLoan(formData: FormData) {
   });
 
   if (!loan) throw new Error("Préstamo no encontrado.");
+  if (loan.borrowerId === userId) {
+    throw new Error("El usuario solicitante no puede autorizar ni entregar su propio préstamo. Esta acción corresponde a otro miembro de la Dirección de Marketing.");
+  }
   if (loan.status === "Entregado" || loan.status === "Devuelto") {
     throw new Error(`El préstamo ya se encuentra en estado ${loan.status}.`);
   }
@@ -368,6 +371,9 @@ export async function processLoanReturn(formData: FormData) {
   });
 
   if (!loan) throw new Error("Préstamo no encontrado.");
+  if (loan.borrowerId === userId) {
+    throw new Error("El usuario solicitante no puede realizar la inspección técnica ni firmar la recepción de su propia devolución. Debe firmar la Dirección de Marketing.");
+  }
 
   const finalStatus = hasIssues ? "Devuelto con Novedad" : "Devuelto";
   const now = new Date();
@@ -470,19 +476,73 @@ export async function signLoanActa(formData: FormData) {
 
   if (!loan) throw new Error("Préstamo de equipos no encontrado.");
 
-  // Validar permisos según el rol que firma
-  if (signRole === "custodian") {
-    if (!isGeneralAdmin && !isMarketingMember) {
-      throw new Error("Solo el personal de Marketing o Dirección puede firmar como Custodio de Almacén.");
+  // ------------------------------------------------------------
+  // VALIDACIÓN ESTRICTA DE ROLES Y UNICIDAD DE FIRMANTES
+  // Cada parte debe ser firmada respectivamente por usuarios distintos:
+  // - Solicitante: Exclusivamente el usuario titular del préstamo (loan.borrowerId).
+  // - Custodio Marketing: Personal de Marketing o Dirección General, NO pudiendo ser el propio solicitante.
+  // - Un mismo usuario NUNCA puede firmar ambas partes del mismo documento.
+  // ------------------------------------------------------------
+  if (documentType === "F-MKT-01") {
+    if (signRole === "custodian") {
+      if (!isGeneralAdmin && !isMarketingMember) {
+        throw new Error("Solo el personal autorizado de Marketing o Dirección General puede firmar la entrega del equipo.");
+      }
+      if (loan.borrowerId === session.user.id) {
+        throw new Error("El usuario solicitante no puede firmar la entrega ni actuar como custodio de su propia solicitud. Esta firma corresponde a la Dirección de Marketing.");
+      }
+      if (loan.departureReceivedSignedById && loan.departureReceivedSignedById === session.user.id) {
+        throw new Error("Inconsistencia: Un mismo usuario no puede firmar como Custodio y Solicitante en la misma acta de entrega.");
+      }
+      if (loan.departureDeliveredSignedAt) {
+        throw new Error("La entrega de este préstamo ya ha sido firmada por el custodio.");
+      }
+    } else if (signRole === "borrower") {
+      if (loan.borrowerId !== session.user.id) {
+        throw new Error(
+          `Acceso denegado: Esta firma de recepción corresponde exclusivamente al custodio solicitante titular (${loan.borrower.name}).`
+        );
+      }
+      if (loan.departureDeliveredSignedById && loan.departureDeliveredSignedById === session.user.id) {
+        throw new Error("Inconsistencia: Un mismo usuario no puede firmar como Custodio y Solicitante en la misma acta de entrega.");
+      }
+      if (loan.departureReceivedSignedAt) {
+        throw new Error("La recepción conforme de este préstamo ya ha sido firmada por el solicitante.");
+      }
+    } else {
+      throw new Error("Rol de firma no válido.");
     }
-  } else if (signRole === "borrower") {
-    if (loan.borrowerId !== session.user.id && !isGeneralAdmin) {
-      throw new Error(
-        `Solo el usuario asignado como solicitante (${loan.borrower.name}) o un Administrador General puede firmar la recepción/devolución.`
-      );
+  } else if (documentType === "F-MKT-02") {
+    if (signRole === "borrower") {
+      if (loan.borrowerId !== session.user.id) {
+        throw new Error(
+          `Acceso denegado: La firma de devolución corresponde exclusivamente al custodio solicitante titular (${loan.borrower.name}).`
+        );
+      }
+      if (loan.returnReceivedSignedById && loan.returnReceivedSignedById === session.user.id) {
+        throw new Error("Inconsistencia: Un mismo usuario no puede firmar la devolución y la inspección en la misma acta.");
+      }
+      if (loan.returnDeliveredSignedAt) {
+        throw new Error("La devolución de este préstamo ya ha sido firmada por el solicitante.");
+      }
+    } else if (signRole === "custodian") {
+      if (!isGeneralAdmin && !isMarketingMember) {
+        throw new Error("Solo el personal autorizado de Marketing o Dirección General puede firmar la inspección y recepción del equipo.");
+      }
+      if (loan.borrowerId === session.user.id) {
+        throw new Error("El usuario solicitante no puede realizar la inspección técnica ni firmar la recepción de su propia devolución. Debe firmar la Dirección de Marketing.");
+      }
+      if (loan.returnDeliveredSignedById && loan.returnDeliveredSignedById === session.user.id) {
+        throw new Error("Inconsistencia: Un mismo usuario no puede firmar la devolución y la inspección en la misma acta.");
+      }
+      if (loan.returnReceivedSignedAt) {
+        throw new Error("La inspección y recepción de este préstamo ya ha sido firmada por el custodio de Marketing.");
+      }
+    } else {
+      throw new Error("Rol de firma no válido.");
     }
   } else {
-    throw new Error("Rol de firma no válido.");
+    throw new Error("Tipo de documento no válido.");
   }
 
   const now = new Date();

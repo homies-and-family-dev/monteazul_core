@@ -104,9 +104,14 @@ export default function ActaDocumentView({
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasCanvasStroke, setHasCanvasStroke] = useState(false);
 
-  // Determinar quién puede firmar qué documento
-  const canSignCustodian = currentUser.isGeneralAdmin || currentUser.isMarketingMember;
-  const canSignBorrower = currentUser.isGeneralAdmin || currentUser.isBorrower;
+  // Reglas estrictas de firma: Separación de roles y unicidad de firmantes
+  // 1. Solicitante / Custodio Receptor: Únicamente el usuario que solicitó el préstamo (loan.borrowerId)
+  const isActualBorrower = currentUser.id === loan.borrowerId;
+
+  // 2. Custodio de Entrega / Inspección: Personal de Marketing o Administración General, EXCLUYENDO al propio solicitante
+  const isAuthorizedCustodian =
+    (currentUser.isGeneralAdmin || currentUser.isMarketingMember) &&
+    currentUser.id !== loan.borrowerId;
 
   // Estado de firmas en F-MKT-01
   const isF1CustodianSigned = Boolean(loan.departureDeliveredSignedAt);
@@ -117,6 +122,28 @@ export default function ActaDocumentView({
   const isF2BorrowerSigned = Boolean(loan.returnDeliveredSignedAt);
   const isF2CustodianSigned = Boolean(loan.returnReceivedSignedAt);
   const isF2Complete = isF2BorrowerSigned && isF2CustodianSigned;
+
+  // Permisos para F-MKT-01 (Acta de Entrega):
+  const canSignF1Custodian =
+    isAuthorizedCustodian &&
+    !isF1CustodianSigned &&
+    loan.departureReceivedSignedById !== currentUser.id;
+
+  const canSignF1Borrower =
+    isActualBorrower &&
+    !isF1BorrowerSigned &&
+    loan.departureDeliveredSignedById !== currentUser.id;
+
+  // Permisos para F-MKT-02 (Acta de Devolución):
+  const canSignF2Borrower =
+    isActualBorrower &&
+    !isF2BorrowerSigned &&
+    loan.returnReceivedSignedById !== currentUser.id;
+
+  const canSignF2Custodian =
+    isAuthorizedCustodian &&
+    !isF2CustodianSigned &&
+    loan.returnDeliveredSignedById !== currentUser.id;
 
   const activeHash =
     currentFormat === "F-MKT-01"
@@ -298,10 +325,18 @@ export default function ActaDocumentView({
                 {currentFormat === "F-MKT-01"
                   ? isF1Complete
                     ? "✓ Acta de Entrega F-MKT-01 completada con firma digital de ambas partes. Válida y archivada digitalmente."
-                    : "Esta acta requiere las firmas digitales del Custodio de Marketing y del Solicitante receptor."
+                    : !isF1CustodianSigned && !isF1BorrowerSigned
+                    ? `Esta acta requiere las firmas de ambas partes: primero la entrega por la Dirección de Marketing y la recepción conforme por el solicitante (${loan.borrower.name}).`
+                    : !isF1CustodianSigned
+                    ? "Pendiente la firma de entrega por la Dirección de Marketing."
+                    : `Entrega firmada. Pendiente la firma de recepción conforme por el solicitante (${loan.borrower.name}).`
                   : isF2Complete
                   ? "✓ Acta de Devolución F-MKT-02 completada con firma digital de ambas partes. Válida y archivada digitalmente."
-                  : "Esta acta requiere las firmas digitales del Solicitante (devolución) y del Custodio de Marketing (inspección)."}
+                  : !isF2BorrowerSigned && !isF2CustodianSigned
+                  ? `Esta acta requiere la firma de devolución por el solicitante (${loan.borrower.name}) y la posterior inspección por la Dirección de Marketing.`
+                  : !isF2BorrowerSigned
+                  ? `Pendiente la firma de devolución por el solicitante (${loan.borrower.name}).`
+                  : "Devolución firmada por el solicitante. Pendiente la inspección técnica y firma por la Dirección de Marketing."}
               </p>
             </div>
           </div>
@@ -310,22 +345,22 @@ export default function ActaDocumentView({
           <div className="flex items-center gap-2">
             {currentFormat === "F-MKT-01" && (
               <>
-                {!isF1CustodianSigned && canSignCustodian && (
+                {canSignF1Custodian && (
                   <button
                     type="button"
                     onClick={() => openSignModal("custodian")}
-                    className="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs shadow-xs"
+                    className="px-3.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs shadow-xs"
                   >
-                    Firmar como Custodio
+                    Firmar Entrega (Marketing)
                   </button>
                 )}
-                {!isF1BorrowerSigned && canSignBorrower && (
+                {canSignF1Borrower && (
                   <button
                     type="button"
                     onClick={() => openSignModal("borrower")}
-                    className="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs shadow-xs"
+                    className="px-3.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs shadow-xs"
                   >
-                    Firmar como Solicitante
+                    Firmar Recepción Conforme (Solicitante)
                   </button>
                 )}
               </>
@@ -333,22 +368,22 @@ export default function ActaDocumentView({
 
             {currentFormat === "F-MKT-02" && (
               <>
-                {!isF2BorrowerSigned && canSignBorrower && (
+                {canSignF2Borrower && (
                   <button
                     type="button"
                     onClick={() => openSignModal("borrower")}
-                    className="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs shadow-xs"
+                    className="px-3.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs shadow-xs"
                   >
-                    Firmar Devolución
+                    Firmar Devolución (Solicitante)
                   </button>
                 )}
-                {!isF2CustodianSigned && canSignCustodian && (
+                {canSignF2Custodian && (
                   <button
                     type="button"
                     onClick={() => openSignModal("custodian")}
-                    className="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs shadow-xs"
+                    className="px-3.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs shadow-xs"
                   >
-                    Firmar Recepción / Inspección
+                    Firmar Inspección y Cierre (Marketing)
                   </button>
                 )}
               </>
@@ -710,15 +745,17 @@ export default function ActaDocumentView({
                   ) : (
                     <div className="py-6 text-center space-y-2">
                       <p className="text-[11px] text-slate-600 italic">
-                        Pendiente de validación por Custodio de Marketing.
+                        {isActualBorrower
+                          ? "Usted es el solicitante de este préstamo. La firma de entrega debe ser efectuada por la Dirección de Marketing."
+                          : "Pendiente de autorización y firma por la Dirección o Custodio de Marketing."}
                       </p>
-                      {canSignCustodian && (
+                      {canSignF1Custodian && (
                         <button
                           type="button"
                           onClick={() => openSignModal("custodian")}
-                          className="print:hidden px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs shadow-xs"
+                          className="print:hidden px-3.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs shadow-xs"
                         >
-                          Firmar Digitalmente Ahora
+                          Firmar Entrega como Custodio
                         </button>
                       )}
                     </div>
@@ -795,15 +832,17 @@ export default function ActaDocumentView({
                   ) : (
                     <div className="py-6 text-center space-y-2">
                       <p className="text-[11px] text-slate-600 italic">
-                        Pendiente de firma del receptor: <strong>{loan.borrower.name}</strong>.
+                        {isAuthorizedCustodian
+                          ? `Firma reservada exclusivamente para el solicitante receptor: ${loan.borrower.name}.`
+                          : `Pendiente de recepción conforme por el solicitante (${loan.borrower.name}).`}
                       </p>
-                      {canSignBorrower && (
+                      {canSignF1Borrower && (
                         <button
                           type="button"
                           onClick={() => openSignModal("borrower")}
-                          className="print:hidden px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs shadow-xs"
+                          className="print:hidden px-3.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs shadow-xs"
                         >
-                          Firmar Digitalmente Ahora
+                          Firmar Recepción Conforme
                         </button>
                       )}
                     </div>
@@ -883,15 +922,17 @@ export default function ActaDocumentView({
                   ) : (
                     <div className="py-6 text-center space-y-2">
                       <p className="text-[11px] text-slate-600 italic">
-                        Pendiente de firma del solicitante: <strong>{loan.borrower.name}</strong>.
+                        {isAuthorizedCustodian
+                          ? `Firma reservada exclusivamente para el solicitante que devuelve: ${loan.borrower.name}.`
+                          : `Pendiente de firma de devolución por el solicitante (${loan.borrower.name}).`}
                       </p>
-                      {canSignBorrower && (
+                      {canSignF2Borrower && (
                         <button
                           type="button"
                           onClick={() => openSignModal("borrower")}
-                          className="print:hidden px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs shadow-xs"
+                          className="print:hidden px-3.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs shadow-xs"
                         >
-                          Firmar Digitalmente Ahora
+                          Firmar Devolución del Equipo
                         </button>
                       )}
                     </div>
@@ -968,15 +1009,17 @@ export default function ActaDocumentView({
                   ) : (
                     <div className="py-6 text-center space-y-2">
                       <p className="text-[11px] text-slate-600 italic">
-                        Pendiente de inspección y firma del Custodio de Marketing.
+                        {isActualBorrower
+                          ? "Usted es el solicitante. La inspección técnica y recepción final debe ser firmada por la Dirección de Marketing."
+                          : "Pendiente de inspección técnica y firma por la Dirección o Custodio de Marketing."}
                       </p>
-                      {canSignCustodian && (
+                      {canSignF2Custodian && (
                         <button
                           type="button"
                           onClick={() => openSignModal("custodian")}
-                          className="print:hidden px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs shadow-xs"
+                          className="print:hidden px-3.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs shadow-xs"
                         >
-                          Firmar Digitalmente Ahora
+                          Firmar Inspección y Recepción
                         </button>
                       )}
                     </div>
@@ -1061,8 +1104,12 @@ export default function ActaDocumentView({
                 <span className="text-slate-600 font-medium">Rol en este Documento:</span>
                 <span className="font-bold text-blue-900">
                   {signRoleToSign === "custodian"
-                    ? "Custodio de Almacén Marketing"
-                    : "Solicitante / Receptor Responsable"}
+                    ? currentFormat === "F-MKT-01"
+                      ? "Custodio de Almacén (Dirección de Marketing - Entrega)"
+                      : "Custodio de Almacén (Dirección de Marketing - Inspección)"
+                    : currentFormat === "F-MKT-01"
+                    ? "Solicitante Receptor Titular (Recepción Conforme)"
+                    : "Solicitante Titular (Devolución de Equipos)"}
                 </span>
               </div>
             </div>

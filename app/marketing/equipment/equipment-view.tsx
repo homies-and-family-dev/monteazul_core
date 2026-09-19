@@ -838,7 +838,7 @@ export default function EquipmentView({
                       </div>
 
                       <div className="flex items-center gap-2">
-                        {loan.status === "Solicitado" && canManage && (
+                        {loan.status === "Solicitado" && canManage && loan.borrowerId !== activeUserId && (
                           <button
                             type="button"
                             onClick={() => {
@@ -852,7 +852,7 @@ export default function EquipmentView({
                           </button>
                         )}
 
-                        {loan.status === "Entregado" && canManage && (
+                        {loan.status === "Entregado" && canManage && loan.borrowerId !== activeUserId && (
                           <button
                             type="button"
                             onClick={() => {
