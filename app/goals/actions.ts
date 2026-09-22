@@ -4,7 +4,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
-async function checkGoalsAccess() {
+async function getAuthenticatedUser() {
   const session = await auth();
   if (!session?.user?.id) {
     throw new Error("No autenticado.");
@@ -37,52 +37,107 @@ async function checkGoalsAccess() {
     )
   );
 
-  const isGeneralAdmin =
+  // Perfil Gerencia / Administración General: único perfil con acceso transversal a todas las áreas
+  const isGerencia =
     rolesList.includes("Administrador General") ||
-    rolesList.includes("Gerencia") ||
-    permissionsList.includes("masters:manage_roles");
+    rolesList.includes("Gerencia");
+
+  const userAreaIds = currentUser?.areas.map((a) => a.areaId) ?? [];
 
   const canManageGoals =
-    isGeneralAdmin || permissionsList.includes("goals:manage");
+    isGerencia ||
+    permissionsList.includes("goals:manage") ||
+    rolesList.some((r) => r.includes("Director")) ||
+    userAreaIds.length > 0;
 
-  if (!canManageGoals) {
+  return {
+    userId: session.user.id,
+    isGeneralAdmin: isGerencia,
+    isGerencia,
+    canManageGoals,
+    userAreaIds,
+    currentUser,
+  };
+}
+
+async function checkGoalsAccess() {
+  const user = await getAuthenticatedUser();
+  if (!user.canManageGoals) {
     throw new Error("Acceso no autorizado para gestionar o crear Objetivos.");
   }
-
-  return { userId: session.user.id, isGeneralAdmin, currentUser };
+  return user;
 }
 
 export async function createGoal(formData: FormData) {
-  const { userId, isGeneralAdmin, currentUser } = await checkGoalsAccess();
+  const { userId, isGerencia, userAreaIds } = await checkGoalsAccess();
 
   const title = (formData.get("title") as string)?.trim();
   const description = (formData.get("description") as string)?.trim() || null;
-  const scope = (formData.get("scope") as string)?.trim() || "Área";
+  let scope = (formData.get("scope") as string)?.trim() || "Área";
   const horizon = (formData.get("horizon") as string)?.trim() || "Corto Plazo";
   const period = (formData.get("period") as string)?.trim();
   const startDateStr = (formData.get("startDate") as string)?.trim();
   const endDateStr = (formData.get("endDate") as string)?.trim();
-  const indicator = (formData.get("indicator") as string)?.trim();
-  const targetValue = parseFloat(formData.get("targetValue") as string);
-  const currentValue = parseFloat((formData.get("currentValue") as string) || "0");
-  const unit = (formData.get("unit") as string)?.trim() || "%";
+  const indicator = (formData.get("indicator") as string)?.trim() || "Avances y Cumplimiento Operativo";
   let areaId = (formData.get("areaId") as string)?.trim() || null;
   const responsibleId = (formData.get("responsibleId") as string)?.trim() || userId;
+  const status = (formData.get("status") as string)?.trim() || "En Curso";
 
-  if (!title || !period || !startDateStr || !endDateStr || !indicator || isNaN(targetValue)) {
+  // Parsear avances iniciales obligatorios
+  const rawTasks = (formData.get("tasks") as string)?.trim();
+  let tasksList: Array<{ title: string; assignedToId?: string | null }> = [];
+  if (rawTasks) {
+    try {
+      tasksList = JSON.parse(rawTasks);
+    } catch {
+      tasksList = [];
+    }
+  }
+
+  // Filtrar títulos vacíos
+  tasksList = tasksList.filter((t) => t.title && t.title.trim().length > 0);
+
+  if (!title || !period || !startDateStr || !endDateStr) {
     throw new Error("Por favor complete los campos obligatorios del objetivo.");
   }
 
-  // Si no es Administrador General, limitar el área a las que dirige
-  if (!isGeneralAdmin) {
-    const directorAreaIds = currentUser?.areas.map((a) => a.areaId) ?? [];
-    if (areaId && !directorAreaIds.includes(areaId)) {
-      throw new Error("Solo puede crear objetivos para el área que dirige.");
+  if (tasksList.length === 0) {
+    throw new Error(
+      "Debe registrar al menos un avance. El cumplimiento del 100% del objetivo depende de los avances asignados."
+    );
+  }
+
+  // REGLAS DE SEGREGACIÓN POR ÁREA:
+  // Si no es Gerencia, únicamente puede crear objetivos de su área respectiva
+  if (!isGerencia) {
+    scope = "Área";
+    if (!areaId || !userAreaIds.includes(areaId)) {
+      throw new Error("Acceso denegado: solo puede registrar objetivos para su área asignada.");
     }
   }
 
   if (scope === "Gerencial") {
+    if (!isGerencia) {
+      throw new Error("Solo la Gerencia General puede crear objetivos de alcance gerencial transversal.");
+    }
     areaId = null;
+  }
+
+  // Validar que el personal asignado en avances pertenezca al área seleccionada
+  if (areaId) {
+    for (const t of tasksList) {
+      if (t.assignedToId) {
+        const assignedUser = await prisma.user.findUnique({
+          where: { id: t.assignedToId },
+          include: { areas: true },
+        });
+        if (!assignedUser?.areas.some((ua) => ua.areaId === areaId)) {
+          throw new Error(
+            `El personal asignado en "${t.title}" no pertenece al área asignada del objetivo.`
+          );
+        }
+      }
+    }
   }
 
   const now = new Date();
@@ -102,11 +157,7 @@ export async function createGoal(formData: FormData) {
 
   const startDate = new Date(`${startDateStr}T00:00:00`);
   const endDate = new Date(`${endDateStr}T23:59:59`);
-
-  let status = "En Curso";
-  if (currentValue >= targetValue) {
-    status = "Cumplido";
-  }
+  const totalTasks = tasksList.length;
 
   const goal = await prisma.goal.create({
     data: {
@@ -118,26 +169,30 @@ export async function createGoal(formData: FormData) {
       startDate,
       endDate,
       indicator,
-      targetValue,
-      currentValue,
-      unit,
+      targetValue: totalTasks,
+      currentValue: 0,
+      unit: "avances",
       status,
       areaId: areaId || undefined,
       responsibleId,
       createdById: userId,
-      progressUpdates:
-        currentValue > 0
-          ? {
-              create: [
-                {
-                  userId,
-                  previousValue: 0,
-                  newValue: currentValue,
-                  note: "Valor base inicial registrado en la creación del objetivo.",
-                },
-              ],
-            }
-          : undefined,
+      tasks: {
+        create: tasksList.map((t) => ({
+          title: t.title.trim(),
+          assignedToId: t.assignedToId || null,
+          status: "pendiente",
+        })),
+      },
+      progressUpdates: {
+        create: [
+          {
+            userId,
+            previousValue: 0,
+            newValue: 0,
+            note: `Objetivo definido con ${totalTasks} avance(s) inicial(es) para alcanzar el 100% de cumplimiento.`,
+          },
+        ],
+      },
     },
   });
 
@@ -147,37 +202,50 @@ export async function createGoal(formData: FormData) {
 }
 
 export async function updateGoal(formData: FormData) {
-  const { userId, isGeneralAdmin, currentUser } = await checkGoalsAccess();
+  const { userId, isGerencia, userAreaIds } = await checkGoalsAccess();
 
   const id = formData.get("id") as string;
   if (!id) throw new Error("ID de objetivo requerido.");
 
+  const goal = await prisma.goal.findUnique({
+    where: { id },
+  });
+
+  if (!goal) throw new Error("Objetivo no encontrado.");
+
+  if (!isGerencia) {
+    if (goal.areaId && !userAreaIds.includes(goal.areaId) && goal.responsibleId !== userId) {
+      throw new Error("No está autorizado a modificar objetivos de otras áreas.");
+    }
+  }
+
   const title = (formData.get("title") as string)?.trim();
   const description = (formData.get("description") as string)?.trim() || null;
-  const scope = (formData.get("scope") as string)?.trim() || "Área";
+  let scope = (formData.get("scope") as string)?.trim() || "Área";
   const horizon = (formData.get("horizon") as string)?.trim() || "Corto Plazo";
   const period = (formData.get("period") as string)?.trim();
   const startDateStr = (formData.get("startDate") as string)?.trim();
   const endDateStr = (formData.get("endDate") as string)?.trim();
-  const indicator = (formData.get("indicator") as string)?.trim();
-  const targetValue = parseFloat(formData.get("targetValue") as string);
-  const unit = (formData.get("unit") as string)?.trim() || "%";
+  const indicator = (formData.get("indicator") as string)?.trim() || "Avances y Cumplimiento Operativo";
   let areaId = (formData.get("areaId") as string)?.trim() || null;
   const responsibleId = (formData.get("responsibleId") as string)?.trim() || userId;
   const status = (formData.get("status") as string)?.trim() || "En Curso";
 
-  if (!title || !period || !startDateStr || !endDateStr || !indicator || isNaN(targetValue)) {
+  if (!title || !period || !startDateStr || !endDateStr) {
     throw new Error("Por favor complete los campos obligatorios del objetivo.");
   }
 
-  if (!isGeneralAdmin) {
-    const directorAreaIds = currentUser?.areas.map((a) => a.areaId) ?? [];
-    if (areaId && !directorAreaIds.includes(areaId)) {
+  if (!isGerencia) {
+    scope = "Área";
+    if (areaId && !userAreaIds.includes(areaId)) {
       throw new Error("No está autorizado a modificar objetivos de otras áreas.");
     }
   }
 
   if (scope === "Gerencial") {
+    if (!isGerencia) {
+      throw new Error("Solo la Gerencia General puede gestionar objetivos de alcance gerencial transversal.");
+    }
     areaId = null;
   }
 
@@ -201,8 +269,6 @@ export async function updateGoal(formData: FormData) {
       startDate,
       endDate,
       indicator,
-      targetValue,
-      unit,
       status,
       areaId: areaId || null,
       responsibleId,
@@ -213,47 +279,252 @@ export async function updateGoal(formData: FormData) {
   revalidatePath("/management");
 }
 
-export async function recordGoalProgress(formData: FormData) {
-  const { userId } = await checkGoalsAccess();
+export async function createGoalTask(formData: FormData) {
+  const { userId, isGerencia, userAreaIds } = await checkGoalsAccess();
 
-  const goalId = formData.get("goalId") as string;
-  const newValue = parseFloat(formData.get("newValue") as string);
-  const note = (formData.get("note") as string)?.trim();
+  const goalId = String(formData.get("goalId") ?? "").trim();
+  const title = String(formData.get("title") ?? "").trim();
+  const assignedToId = String(formData.get("assignedToId") ?? "").trim() || null;
 
-  if (!goalId || isNaN(newValue) || !note) {
-    throw new Error("Debe ingresar el nuevo valor alcanzado y la justificación del avance.");
+  if (!goalId || !title) {
+    throw new Error("El título del avance no puede estar vacío.");
   }
 
   const goal = await prisma.goal.findUnique({
     where: { id: goalId },
+    include: { tasks: true },
   });
 
-  if (!goal) throw new Error("Objetivo no encontrado.");
+  if (!goal) {
+    throw new Error("Objetivo no encontrado.");
+  }
 
+  // Segregación de área
+  if (!isGerencia) {
+    if (goal.areaId && !userAreaIds.includes(goal.areaId) && goal.responsibleId !== userId) {
+      throw new Error("No está autorizado a agregar avances a objetivos de otras áreas.");
+    }
+  }
+
+  // Validar que el operador asignado pertenezca al área del objetivo
+  if (assignedToId && goal.areaId) {
+    const assignedUser = await prisma.user.findUnique({
+      where: { id: assignedToId },
+      include: { areas: true },
+    });
+    if (!assignedUser?.areas.some((ua) => ua.areaId === goal.areaId)) {
+      throw new Error("El operador seleccionado no pertenece al área de este objetivo.");
+    }
+  }
+
+  await prisma.goalTask.create({
+    data: {
+      goalId,
+      title,
+      status: "pendiente",
+      assignedToId,
+    },
+  });
+
+  // Reconsiderar total de avances y recalcular avance hacia el 100%
+  const allTasks = await prisma.goalTask.findMany({
+    where: { goalId },
+  });
+
+  const totalTasks = allTasks.length;
+  const completedTasks = allTasks.filter((t) => t.status === "completada").length;
+  const percent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
   const previousValue = goal.currentValue;
 
   let newStatus = goal.status;
-  if (newValue >= goal.targetValue) {
+  if (totalTasks > 0 && completedTasks === totalTasks) {
     newStatus = "Cumplido";
-  } else if (newStatus === "Cumplido" && newValue < goal.targetValue) {
+  } else if (newStatus === "Cumplido" && completedTasks < totalTasks) {
     newStatus = "En Curso";
   }
 
   await prisma.$transaction([
+    prisma.goal.update({
+      where: { id: goalId },
+      data: {
+        targetValue: totalTasks,
+        currentValue: completedTasks,
+        unit: "avances",
+        status: newStatus,
+      },
+    }),
     prisma.goalProgressUpdate.create({
       data: {
         goalId,
         userId,
         previousValue,
-        newValue,
-        note,
+        newValue: completedTasks,
+        note: `Se agregó el avance: "${title}". Total reconsiderado: ${totalTasks} avances (${completedTasks}/${totalTasks} cumplidos - ${percent}%)`,
       },
     }),
+  ]);
+
+  revalidatePath("/goals");
+  revalidatePath("/management");
+}
+
+export async function updateGoalTaskStatus(formData: FormData) {
+  const authUser = await getAuthenticatedUser();
+  const userId = authUser.userId;
+
+  const taskId = String(formData.get("taskId") ?? "").trim();
+  const goalId = String(formData.get("goalId") ?? "").trim();
+  const newStatus = String(formData.get("newStatus") ?? "").trim(); // "completada" | "pendiente"
+
+  if (!taskId || !goalId || !newStatus) {
+    throw new Error("Datos incompletos para actualizar el estado del avance.");
+  }
+
+  const task = await prisma.goalTask.findUnique({
+    where: { id: taskId },
+    include: {
+      goal: true,
+    },
+  });
+
+  if (!task || task.goalId !== goalId) {
+    throw new Error("Avance de objetivo no encontrado.");
+  }
+
+  const isAssigned = task.assignedToId === userId;
+  const isGoalResponsible = task.goal.responsibleId === userId;
+  const isAreaDirector = task.goal.areaId ? authUser.userAreaIds.includes(task.goal.areaId) : false;
+
+  if (
+    !authUser.isGerencia &&
+    !isAssigned &&
+    !isGoalResponsible &&
+    !isAreaDirector
+  ) {
+    throw new Error("No tiene permisos para modificar el estado de avances de otras áreas.");
+  }
+
+  const now = new Date();
+  const isCompleted = newStatus === "completada";
+
+  await prisma.goalTask.update({
+    where: { id: taskId },
+    data: {
+      status: isCompleted ? "completada" : "pendiente",
+      completedAt: isCompleted ? now : null,
+      startedAt: isCompleted ? (task.startedAt || now) : null,
+    },
+  });
+
+  // Recalcular avances hacia el 100%
+  const allTasks = await prisma.goalTask.findMany({
+    where: { goalId },
+  });
+
+  const totalTasks = allTasks.length;
+  const completedTasks = allTasks.filter((t) => t.status === "completada").length;
+  const percent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+  const previousValue = task.goal.currentValue;
+
+  let newStatusGoal = task.goal.status;
+  if (totalTasks > 0 && completedTasks === totalTasks) {
+    newStatusGoal = "Cumplido";
+  } else if (newStatusGoal === "Cumplido" && completedTasks < totalTasks) {
+    newStatusGoal = "En Curso";
+  }
+
+  const actionText = isCompleted
+    ? `Avance "${task.title}" marcado como cumplido (${completedTasks}/${totalTasks} cumplidos - ${percent}%)`
+    : `Avance "${task.title}" reabierto (${completedTasks}/${totalTasks} cumplidos - ${percent}%)`;
+
+  await prisma.$transaction([
     prisma.goal.update({
       where: { id: goalId },
       data: {
-        currentValue: newValue,
-        status: newStatus,
+        targetValue: totalTasks,
+        currentValue: completedTasks,
+        unit: "avances",
+        status: newStatusGoal,
+      },
+    }),
+    prisma.goalProgressUpdate.create({
+      data: {
+        goalId,
+        userId,
+        previousValue,
+        newValue: completedTasks,
+        note: actionText,
+      },
+    }),
+  ]);
+
+  revalidatePath("/goals");
+  revalidatePath("/management");
+}
+
+export async function deleteGoalTask(formData: FormData) {
+  const { userId, isGerencia, userAreaIds } = await checkGoalsAccess();
+
+  const taskId = String(formData.get("taskId") ?? "").trim();
+  const goalId = String(formData.get("goalId") ?? "").trim();
+
+  if (!taskId || !goalId) {
+    throw new Error("Datos incompletos para eliminar el avance.");
+  }
+
+  const task = await prisma.goalTask.findUnique({
+    where: { id: taskId },
+    include: { goal: true },
+  });
+
+  if (!task || task.goalId !== goalId) {
+    throw new Error("Avance no encontrado.");
+  }
+
+  if (!isGerencia) {
+    if (task.goal.areaId && !userAreaIds.includes(task.goal.areaId) && task.goal.responsibleId !== userId) {
+      throw new Error("No está autorizado a eliminar avances de este objetivo.");
+    }
+  }
+
+  await prisma.goalTask.delete({
+    where: { id: taskId },
+  });
+
+  // Reconsiderar total y recalcular avances
+  const allTasks = await prisma.goalTask.findMany({
+    where: { goalId },
+  });
+
+  const totalTasks = allTasks.length;
+  const completedTasks = allTasks.filter((t) => t.status === "completada").length;
+  const percent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+  const previousValue = task.goal.currentValue;
+
+  let newStatusGoal = task.goal.status;
+  if (totalTasks > 0 && completedTasks === totalTasks) {
+    newStatusGoal = "Cumplido";
+  } else if (newStatusGoal === "Cumplido" && completedTasks < totalTasks) {
+    newStatusGoal = "En Curso";
+  }
+
+  await prisma.$transaction([
+    prisma.goal.update({
+      where: { id: goalId },
+      data: {
+        targetValue: totalTasks,
+        currentValue: completedTasks,
+        unit: "avances",
+        status: newStatusGoal,
+      },
+    }),
+    prisma.goalProgressUpdate.create({
+      data: {
+        goalId,
+        userId,
+        previousValue,
+        newValue: completedTasks,
+        note: `Se eliminó el avance: "${task.title}". Total reconsiderado: ${totalTasks} avances (${completedTasks}/${totalTasks} cumplidos - ${percent}%)`,
       },
     }),
   ]);
@@ -263,7 +534,7 @@ export async function recordGoalProgress(formData: FormData) {
 }
 
 export async function deleteGoal(id: string) {
-  const { isGeneralAdmin, currentUser } = await checkGoalsAccess();
+  const { isGerencia, userAreaIds, userId } = await checkGoalsAccess();
 
   const goal = await prisma.goal.findUnique({
     where: { id },
@@ -271,9 +542,8 @@ export async function deleteGoal(id: string) {
 
   if (!goal) throw new Error("Objetivo no encontrado.");
 
-  if (!isGeneralAdmin) {
-    const directorAreaIds = currentUser?.areas.map((a) => a.areaId) ?? [];
-    if (goal.areaId && !directorAreaIds.includes(goal.areaId)) {
+  if (!isGerencia) {
+    if (goal.areaId && !userAreaIds.includes(goal.areaId) && goal.responsibleId !== userId) {
       throw new Error("No está autorizado a eliminar objetivos de otras áreas.");
     }
   }

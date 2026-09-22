@@ -75,6 +75,7 @@ model User {
   goalsResponsible          Goal[] @relation("GoalResponsible")
   goalsCreated              Goal[] @relation("GoalCreator")
   goalProgressUpdates       GoalProgressUpdate[]
+  goalTasksAssigned         GoalTask[] @relation("GoalTaskAssignee")
 }
 
 // A user's operational access to an area (independent from "can file requests")
@@ -436,6 +437,7 @@ model Goal {
   createdBy     User     @relation("GoalCreator", fields: [createdById], references: [id])
 
   progressUpdates GoalProgressUpdate[]
+  tasks           GoalTask[]
 
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
@@ -458,6 +460,22 @@ model GoalProgressUpdate {
   note          String   // Justificación o resumen del avance registrado
 
   createdAt     DateTime @default(now())
+}
+
+model GoalTask {
+  id           String    @id @default(cuid())
+  goalId       String
+  goal         Goal      @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  title        String
+  status       String    @default("pendiente") // "pendiente" | "en_proceso" | "completada"
+  assignedToId String?
+  assignedTo   User?     @relation("GoalTaskAssignee", fields: [assignedToId], references: [id])
+  createdAt    DateTime  @default(now())
+  startedAt    DateTime?
+  completedAt  DateTime?
+
+  @@index([goalId])
+  @@index([status])
 }
 
 

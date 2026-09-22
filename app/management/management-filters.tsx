@@ -243,6 +243,7 @@ export default function ManagementFilters({
             className="w-full rounded-lg border border-blue-300 bg-white px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="all">Todas las prioridades</option>
+            <option value="Urgente">Urgente</option>
             <option value="Alta">Alta</option>
             <option value="Media">Media</option>
             <option value="Baja">Baja</option>

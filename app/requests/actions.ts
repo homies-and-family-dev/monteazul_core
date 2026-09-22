@@ -356,3 +356,86 @@ export async function deleteTask(formData: FormData) {
 
   revalidatePath(`/requests/${requestId || task.request.id}`);
 }
+
+export async function getOperatorWorkload(operatorId: string) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    throw new Error("No autenticado");
+  }
+
+  // 1. Solicitudes donde el usuario tiene asignación
+  const requests = await prisma.request.findMany({
+    where: {
+      assignments: {
+        some: { userId: operatorId },
+      },
+    },
+    orderBy: { filedAt: "desc" },
+    take: 20,
+    select: {
+      id: true,
+      ticketNumber: true,
+      title: true,
+      status: true,
+      priority: true,
+      type: true,
+      filedAt: true,
+      destinationArea: {
+        select: { code: true, name: true },
+      },
+    },
+  });
+
+  // 2. Tareas operativas de solicitudes asignadas
+  const tasks = await prisma.task.findMany({
+    where: {
+      assignedToId: operatorId,
+    },
+    orderBy: { createdAt: "desc" },
+    take: 20,
+    select: {
+      id: true,
+      title: true,
+      status: true,
+      createdAt: true,
+      request: {
+        select: {
+          id: true,
+          ticketNumber: true,
+          title: true,
+        },
+      },
+    },
+  });
+
+  // 3. Tareas / Avances de objetivos de área asignados
+  const goalTasks = await prisma.goalTask.findMany({
+    where: {
+      assignedToId: operatorId,
+    },
+    orderBy: { createdAt: "desc" },
+    take: 20,
+    select: {
+      id: true,
+      title: true,
+      status: true,
+      createdAt: true,
+      goal: {
+        select: {
+          id: true,
+          title: true,
+          area: {
+            select: { code: true, name: true },
+          },
+        },
+      },
+    },
+  });
+
+  return {
+    requests,
+    tasks,
+    goalTasks,
+  };
+}
+

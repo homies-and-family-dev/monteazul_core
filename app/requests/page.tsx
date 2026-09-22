@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { RequestStatus, Prisma } from "@prisma/client";
 import { ESTADOS_SOLICITUD } from "@/lib/time-metrics";
+import OperatorWorkloadModal from "./operator-workload-modal";
 
 export const metadata = {
   title: "Bandeja de Solicitudes — Monte Azul Suite",
@@ -67,14 +68,6 @@ const ESTILOS_PRIORIDAD: Record<string, string> = {
   Urgente: "bg-rose-100 text-rose-900 border-rose-300 font-semibold",
 };
 
-function calcularDiasTranscurridos(fechaRadicado: Date): string {
-  const inicio = new Date(fechaRadicado).getTime();
-  const actual = new Date().getTime();
-  const dias = Math.floor((actual - inicio) / (1000 * 60 * 60 * 24));
-  if (dias === 0) return "0 días (Hoy)";
-  if (dias === 1) return "1 día";
-  return `${dias} días`;
-}
 
 export default async function RequestsPage() {
   const session = await auth();
@@ -240,15 +233,13 @@ export default async function RequestsPage() {
             <div className="overflow-x-auto bg-white">
               <table className="w-full text-left border-collapse text-sm">
                 <thead>
-                  <tr className="border-b border-blue-200 bg-blue-50 text-xs font-bold text-blue-950 uppercase tracking-wider">
-                    <th className="px-4 py-3.5">Folio</th>
-                    <th className="px-4 py-3.5">Título y Tipo</th>
-                    <th className="px-4 py-3.5">Origen → Destino</th>
-                    <th className="px-4 py-3.5">Estado Actual</th>
-                    <th className="px-4 py-3.5">Prioridad</th>
-                    <th className="px-4 py-3.5">Operador Asignado</th>
-                    <th className="px-4 py-3.5">Días Transcurridos</th>
-                    <th className="px-4 py-3.5 text-right">Acción</th>
+                  <tr className="border-b border-blue-200 bg-blue-50/80 text-xs font-bold text-blue-950 uppercase tracking-wider">
+                    <th className="px-6 py-3.5 w-32">Folio</th>
+                    <th className="px-6 py-3.5">Título y Tipo</th>
+                    <th className="px-6 py-3.5 w-44">Estado Actual</th>
+                    <th className="px-6 py-3.5 w-32">Prioridad</th>
+                    <th className="px-6 py-3.5 w-52">Operador Asignado</th>
+                    <th className="px-6 py-3.5 w-36 text-right">Acción</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-blue-100">
@@ -256,65 +247,57 @@ export default async function RequestsPage() {
                     const estilo = ESTILOS_ESTADO[r.status] ?? ESTILOS_ESTADO.FILED;
                     const nombreEstado = ESTADOS_SOLICITUD[r.status] ?? r.status;
                     const currentAssignee = r.assignments[0]?.user;
-                    const diasTranscurridos = calcularDiasTranscurridos(r.filedAt);
                     const tieneEnlaces = r.files.length > 0;
 
                     return (
                       <tr
                         key={r.id}
-                        className="hover:bg-blue-50/50 transition-colors"
+                        className="hover:bg-blue-50/40 transition-colors"
                       >
                         {/* Folio */}
-                        <td className="px-4 py-3 font-mono font-bold text-blue-800 whitespace-nowrap">
+                        <td className="px-6 py-4 font-mono font-bold text-blue-900 whitespace-nowrap">
                           <Link href={`/requests/${r.id}`} className="hover:underline">
                             {r.ticketNumber}
                           </Link>
                         </td>
 
                         {/* Título & Tipo */}
-                        <td className="px-4 py-3 max-w-xs">
+                        <td className="px-6 py-4">
                           <Link
                             href={`/requests/${r.id}`}
-                            className="font-semibold text-slate-900 hover:text-blue-800 block truncate"
+                            className="font-semibold text-slate-900 hover:text-blue-800 block text-sm leading-snug"
                           >
                             {r.title}
                           </Link>
-                          <span className="text-xs text-slate-600 block truncate">
-                            {r.type}
-                          </span>
-                          {tieneEnlaces && (
-                            <span className="inline-block text-[11px] font-medium text-blue-700 mt-0.5">
-                              Repositorio / Enlace disponible
+                          <div className="flex flex-wrap items-center gap-2 mt-1">
+                            <span className="text-xs text-slate-500 font-medium">
+                              {r.type}
                             </span>
-                          )}
-                        </td>
-
-                        {/* Origen y Destino */}
-                        <td className="px-4 py-3 whitespace-nowrap text-slate-800">
-                          <span className="font-semibold">{r.originArea.code}</span>
-                          <span className="mx-1.5 text-slate-400">→</span>
-                          <span className="font-bold text-blue-950">
-                            {r.destinationArea.code}
-                          </span>
-                          <span className="block text-xs text-slate-500">
-                            {r.destinationArea.name}
-                          </span>
+                            {tieneEnlaces && (
+                              <>
+                                <span className="text-slate-300 text-xs">•</span>
+                                <span className="inline-flex items-center text-[11px] font-medium text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                                  Enlace / Repositorio
+                                </span>
+                              </>
+                            )}
+                          </div>
                         </td>
 
                         {/* Estado en Español */}
-                        <td className="px-4 py-3 whitespace-nowrap">
+                        <td className="px-6 py-4 whitespace-nowrap">
                           <span
-                            className={`inline-block px-2.5 py-1 rounded-full text-xs font-semibold border ${estilo.bg} ${estilo.text} ${estilo.border}`}
+                            className={`inline-block px-3 py-1 rounded-full text-xs font-semibold border ${estilo.bg} ${estilo.text} ${estilo.border}`}
                           >
                             {nombreEstado}
                           </span>
                         </td>
 
                         {/* Prioridad */}
-                        <td className="px-4 py-3 whitespace-nowrap">
+                        <td className="px-6 py-4 whitespace-nowrap">
                           {r.priority ? (
                             <span
-                              className={`inline-block px-2 py-0.5 rounded text-xs border ${
+                              className={`inline-block px-2.5 py-1 rounded text-xs font-medium border ${
                                 ESTILOS_PRIORIDAD[r.priority] ??
                                 "bg-slate-100 text-slate-700 border-slate-300"
                               }`}
@@ -322,31 +305,32 @@ export default async function RequestsPage() {
                               {r.priority}
                             </span>
                           ) : (
-                            <span className="text-xs text-slate-400">-</span>
+                            <span className="text-xs text-slate-400 font-normal">-</span>
                           )}
                         </td>
 
                         {/* Operador Asignado */}
-                        <td className="px-4 py-3 whitespace-nowrap text-xs text-slate-700">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">
                           {currentAssignee ? (
-                            <span className="font-medium text-slate-900">
-                              {currentAssignee.name}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <OperatorWorkloadModal
+                                operatorId={currentAssignee.id}
+                                operatorName={currentAssignee.name}
+                              />
+                              <span className="font-medium text-slate-900">
+                                {currentAssignee.name}
+                              </span>
+                            </div>
                           ) : (
-                            <span className="text-slate-400 italic">Sin asignar</span>
+                            <span className="text-slate-400 italic text-xs">Sin asignar</span>
                           )}
                         </td>
 
-                        {/* Días Transcurridos desde la radicación */}
-                        <td className="px-4 py-3 whitespace-nowrap text-xs font-medium text-slate-700">
-                          {diasTranscurridos}
-                        </td>
-
                         {/* Botón Ver Detalle */}
-                        <td className="px-4 py-3 whitespace-nowrap text-right">
+                        <td className="px-6 py-4 whitespace-nowrap text-right">
                           <Link
                             href={`/requests/${r.id}`}
-                            className="text-xs font-semibold text-blue-700 hover:text-blue-900"
+                            className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 hover:border-blue-300 transition-colors"
                           >
                             Ver expediente →
                           </Link>

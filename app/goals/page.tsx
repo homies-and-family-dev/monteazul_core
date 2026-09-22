@@ -37,17 +37,19 @@ export default async function GoalsPage() {
     )
   );
 
-  const isGeneralAdmin =
+  // Perfil Gerencia / Administración General: único perfil con acceso transversal a todas las áreas
+  const isGerencia =
     rolesList.includes("Administrador General") ||
-    rolesList.includes("Gerencia") ||
-    permissionsList.includes("masters:manage_roles");
+    rolesList.includes("Gerencia");
+
+  const userAreaIds = currentUser?.areas.map((a) => a.areaId) ?? [];
+  const userAreaNames = currentUser?.areas.map((a) => a.area.name).join(", ") || "";
 
   const canAccessGoals =
-    isGeneralAdmin ||
+    isGerencia ||
     permissionsList.includes("goals:view") ||
-    permissionsList.includes("goals:manage");
-
-  const userDirectorAreaIds = currentUser?.areas.map((a) => a.areaId) ?? [];
+    permissionsList.includes("goals:manage") ||
+    userAreaIds.length > 0;
 
   // Verificación de acceso al Módulo de Objetivos (Puntos 4, 28 y 29)
   if (!canAccessGoals) {
@@ -58,7 +60,7 @@ export default async function GoalsPage() {
             Acceso Restringido al Módulo de Objetivos
           </h2>
           <p className="text-xs text-slate-700 leading-relaxed">
-            La definición y seguimiento de objetivos estratégicos gerenciales y de área está reservada exclusivamente para la Gerencia General y las Direcciones de Área.
+            La definición y seguimiento de objetivos estratégicos de área está reservada para el personal y directores del área correspondiente o para la Gerencia General.
           </p>
           <div>
             <Link
@@ -73,12 +75,28 @@ export default async function GoalsPage() {
     );
   }
 
-  // Cargar objetivos del sistema
+  // REGLA:
+  // "el unico perfil que puede ver todas las areas en el paner de objetivos debe ser gerencia"
+  // "para que los objetivos se cargue y se visualicen respectivamente por areas"
+  const goalsWhere = isGerencia
+    ? {}
+    : {
+        areaId: { in: userAreaIds },
+      };
+
+  // Cargar objetivos del sistema con avances y bitácora según el alcance del usuario
   const goals = await prisma.goal.findMany({
+    where: goalsWhere,
     include: {
       area: { select: { id: true, name: true, code: true } },
       responsible: { select: { id: true, name: true, email: true } },
       createdBy: { select: { id: true, name: true } },
+      tasks: {
+        include: {
+          assignedTo: { select: { id: true, name: true, email: true } },
+        },
+        orderBy: { createdAt: "asc" },
+      },
       progressUpdates: {
         include: {
           user: { select: { id: true, name: true } },
@@ -89,31 +107,46 @@ export default async function GoalsPage() {
     orderBy: { endDate: "asc" },
   });
 
-  // Áreas activas
-  const areas = await prisma.area.findMany({
+  // Todas las áreas activas
+  const allActiveAreas = await prisma.area.findMany({
     where: { active: true },
     select: { id: true, name: true, code: true },
     orderBy: { name: "asc" },
   });
 
-  // Directores y gerentes para asignación
-  const directorsAndManagers = await prisma.user.findMany({
-    where: {
-      active: true,
+  // Áreas visibles para el usuario en el panel
+  const visibleAreas = isGerencia
+    ? allActiveAreas
+    : allActiveAreas.filter((a) => userAreaIds.includes(a.id));
+
+  // Todos los usuarios activos con sus áreas asignadas para filtrado departamental
+  const availableUsers = await prisma.user.findMany({
+    where: { active: true },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      areas: {
+        select: { areaId: true },
+      },
       roles: {
-        some: {
-          role: {
-            OR: [
-              { name: { in: ["Administrador General", "Gerencia"] } },
-              { name: { contains: "Director" } },
-            ],
-          },
+        select: {
+          role: { select: { name: true } },
         },
       },
     },
-    select: { id: true, name: true, email: true },
     orderBy: { name: "asc" },
   });
+
+  // Directores y gerentes
+  const directorsAndManagers = availableUsers.filter((u) =>
+    u.roles.some(
+      (r) =>
+        r.role.name === "Administrador General" ||
+        r.role.name === "Gerencia" ||
+        r.role.name.includes("Director")
+    )
+  );
 
   return (
     <div className="bg-white min-h-screen">
@@ -123,7 +156,7 @@ export default async function GoalsPage() {
           <div>
             <div className="flex items-center gap-2">
               <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-blue-700 text-white shadow-xs">
-                Módulo Gerencial Transversal
+                {isGerencia ? "Módulo Gerencial Transversal" : `Objetivos Departamentales (${userAreaNames})`}
               </span>
               <span className="text-xs font-semibold text-blue-900 bg-blue-100 px-2.5 py-0.5 rounded-full border border-blue-200">
                 Sección 29: Objetivos y Metas Operativas
@@ -133,28 +166,23 @@ export default async function GoalsPage() {
               Alineación Estratégica y Cumplimiento de Objetivos
             </h1>
             <p className="text-xs text-slate-600 mt-0.5">
-              Supervisión de metas cuantitativas a corto, mediano y largo plazo, medición de indicadores y bitácora de avances.
+              {isGerencia
+                ? "Supervisión ejecutiva global y transversal de objetivos y metas de todas las áreas de la organización."
+                : `Gestión y seguimiento de objetivos específicos correspondientes a su área (${userAreaNames}).`}
             </p>
-          </div>
-
-          <div className="flex items-center gap-2 text-xs">
-            <Link
-              href="/management"
-              className="px-3.5 py-1.5 rounded-lg border border-blue-300 bg-white hover:bg-blue-100 text-blue-950 font-semibold shadow-2xs transition-colors"
-            >
-              ← Volver al Tablero de Indicadores
-            </Link>
           </div>
         </div>
 
         {/* Componente Interactivo de Objetivos */}
         <GoalsView
           initialGoals={goals}
-          areas={areas}
+          areas={visibleAreas}
           directorsAndManagers={directorsAndManagers}
+          availableUsers={availableUsers}
+          currentUserId={session.user.id}
           canManage={true}
-          isGeneralAdmin={isGeneralAdmin}
-          userDirectorAreaIds={userDirectorAreaIds}
+          isGerencia={isGerencia}
+          userAreaIds={userAreaIds}
         />
       </div>
     </div>
