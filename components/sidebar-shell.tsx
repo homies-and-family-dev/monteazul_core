@@ -21,6 +21,8 @@ interface UserPermissions {
   canAccessMarketingCampaigns?: boolean;
   canAccessMarketingCalendar?: boolean;
   canAccessMarketingEquipment?: boolean;
+  canAccessCommercial?: boolean;
+  canAccessCommercialSchedule?: boolean;
 }
 
 export interface MasterTypeItem {
@@ -93,6 +95,15 @@ function IconPackage({ className = "w-5 h-5" }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+    </svg>
+  );
+}
+
+function IconBriefcase({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M20 7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2" />
     </svg>
   );
 }
@@ -214,6 +225,10 @@ export default function SidebarShell({
   const isMarketingActive = pathname.startsWith("/marketing");
   const [marketingOpen, setMarketingOpen] = useState<boolean>(true);
 
+  // Acordeón de Comercial: abierto por defecto si estamos en alguna ruta de commercial
+  const isCommercialActive = pathname.startsWith("/commercial");
+  const [commercialOpen, setCommercialOpen] = useState<boolean>(true);
+
   // Acordeón de Estrategia: abierto por defecto si estamos en management o goals
   const [managementOpen, setManagementOpen] = useState<boolean>(true);
 
@@ -227,6 +242,9 @@ export default function SidebarShell({
     setIsMobileOpen(false);
     if (pathname.startsWith("/marketing")) {
       setMarketingOpen(true);
+    }
+    if (pathname.startsWith("/commercial")) {
+      setCommercialOpen(true);
     }
     if (pathname.startsWith("/management") || pathname.startsWith("/goals")) {
       setManagementOpen(true);
@@ -459,7 +477,7 @@ export default function SidebarShell({
           )}
 
           {/* GRUPO 3: ÁREAS FUNCIONALES */}
-          {permissions.canAccessMarketing && (
+          {(permissions.canAccessMarketing || (permissions.canAccessCommercial ?? true)) && (
             <div>
               {!isCollapsed ? (
                 <div className="flex items-center justify-between px-3 pb-1">
@@ -472,92 +490,148 @@ export default function SidebarShell({
               )}
 
               {/* Acordeón del Área de Marketing */}
-              <div className="space-y-1">
-                {!isCollapsed ? (
-                  <button
-                    type="button"
-                    onClick={() => setMarketingOpen(!marketingOpen)}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all text-slate-800 hover:bg-blue-100/80 ${
-                      isMarketingActive ? "bg-blue-100/90 text-blue-950 font-bold" : ""
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5 truncate">
-                      <IconMegaphone className="w-4 h-4 text-blue-700 shrink-0" />
-                      <span className="truncate">Área de Marketing</span>
+              {permissions.canAccessMarketing && (
+                <div className="space-y-1">
+                  {!isCollapsed ? (
+                    <button
+                      type="button"
+                      onClick={() => setMarketingOpen(!marketingOpen)}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all text-slate-800 hover:bg-blue-100/80 ${
+                        isMarketingActive ? "bg-blue-100/90 text-blue-950 font-bold" : ""
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 truncate">
+                        <IconMegaphone className="w-4 h-4 text-blue-700 shrink-0" />
+                        <span className="truncate">Área de Marketing</span>
+                      </div>
+                      {marketingOpen ? (
+                        <IconChevronDown className="w-3.5 h-3.5 text-blue-800" />
+                      ) : (
+                        <IconChevronRight className="w-3.5 h-3.5 text-blue-800" />
+                      )}
+                    </button>
+                  ) : (
+                    <Link
+                      href={
+                        (permissions.canAccessMarketingCampaigns ?? true)
+                          ? "/marketing"
+                          : (permissions.canAccessMarketingCalendar ?? true)
+                          ? "/marketing/calendar"
+                          : "/marketing/equipment"
+                      }
+                      title="Área de Marketing"
+                      className={`flex items-center justify-center p-2 rounded-lg text-xs font-semibold transition-all ${
+                        isMarketingActive
+                          ? "bg-blue-700 text-white shadow-xs"
+                          : "text-slate-700 hover:bg-blue-100/80 hover:text-blue-950"
+                      }`}
+                    >
+                      <IconMegaphone className="w-4 h-4" />
+                    </Link>
+                  )}
+
+                  {/* Submódulos de Marketing desplegables */}
+                  {(!isCollapsed ? marketingOpen : false) && (
+                    <div className="pl-4 ml-2 border-l border-blue-200 space-y-1 pt-1">
+                      {(permissions.canAccessMarketingCampaigns ?? true) && (
+                        <Link
+                          href="/marketing"
+                          className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
+                            isRouteActive("/marketing", true)
+                              ? "bg-blue-700 text-white font-bold shadow-xs"
+                              : "text-slate-700 hover:bg-blue-100/80 hover:text-blue-950"
+                          }`}
+                        >
+                          <IconLayoutGrid className="w-3.5 h-3.5 shrink-0" />
+                          <span className="truncate">Tablero y Campañas</span>
+                        </Link>
+                      )}
+
+                      {(permissions.canAccessMarketingCalendar ?? true) && (
+                        <Link
+                          href="/marketing/calendar"
+                          className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
+                            isRouteActive("/marketing/calendar", true)
+                              ? "bg-blue-700 text-white font-bold shadow-xs"
+                              : "text-slate-700 hover:bg-blue-100/80 hover:text-blue-950"
+                          }`}
+                        >
+                          <IconCalendar className="w-3.5 h-3.5 shrink-0" />
+                          <span className="truncate">Calendario de Contenidos</span>
+                        </Link>
+                      )}
+
+                      {(permissions.canAccessMarketingEquipment ?? true) && (
+                        <Link
+                          href="/marketing/equipment"
+                          className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
+                            isRouteActive("/marketing/equipment", true)
+                              ? "bg-blue-700 text-white font-bold shadow-xs"
+                              : "text-slate-700 hover:bg-blue-100/80 hover:text-blue-950"
+                          }`}
+                        >
+                          <IconPackage className="w-3.5 h-3.5 shrink-0" />
+                          <span className="truncate">Inventario y Préstamos</span>
+                        </Link>
+                      )}
                     </div>
-                    {marketingOpen ? (
-                      <IconChevronDown className="w-3.5 h-3.5 text-blue-800" />
-                    ) : (
-                      <IconChevronRight className="w-3.5 h-3.5 text-blue-800" />
-                    )}
-                  </button>
-                ) : (
-                  <Link
-                    href={
-                      (permissions.canAccessMarketingCampaigns ?? true)
-                        ? "/marketing"
-                        : (permissions.canAccessMarketingCalendar ?? true)
-                        ? "/marketing/calendar"
-                        : "/marketing/equipment"
-                    }
-                    title="Área de Marketing"
-                    className={`flex items-center justify-center p-2 rounded-lg text-xs font-semibold transition-all ${
-                      isMarketingActive
-                        ? "bg-blue-700 text-white shadow-xs"
-                        : "text-slate-700 hover:bg-blue-100/80 hover:text-blue-950"
-                    }`}
-                  >
-                    <IconMegaphone className="w-4 h-4" />
-                  </Link>
-                )}
+                  )}
+                </div>
+              )}
 
-                {/* Submódulos de Marketing desplegables */}
-                {(!isCollapsed ? marketingOpen : false) && (
-                  <div className="pl-4 ml-2 border-l border-blue-200 space-y-1 pt-1">
-                    {(permissions.canAccessMarketingCampaigns ?? true) && (
-                      <Link
-                        href="/marketing"
-                        className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
-                          isRouteActive("/marketing", true)
-                            ? "bg-blue-700 text-white font-bold shadow-xs"
-                            : "text-slate-700 hover:bg-blue-100/80 hover:text-blue-950"
-                        }`}
-                      >
-                        <IconLayoutGrid className="w-3.5 h-3.5 shrink-0" />
-                        <span className="truncate">Tablero y Campañas</span>
-                      </Link>
-                    )}
+              {/* Acordeón del Área Comercial */}
+              {(permissions.canAccessCommercial ?? true) && (
+                <div className={`space-y-1 ${permissions.canAccessMarketing ? "mt-2" : ""}`}>
+                  {!isCollapsed ? (
+                    <button
+                      type="button"
+                      onClick={() => setCommercialOpen(!commercialOpen)}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all text-slate-800 hover:bg-blue-100/80 ${
+                        isCommercialActive ? "bg-blue-100/90 text-blue-950 font-bold" : ""
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 truncate">
+                        <IconBriefcase className="w-4 h-4 text-blue-700 shrink-0" />
+                        <span className="truncate">Área Comercial</span>
+                      </div>
+                      {commercialOpen ? (
+                        <IconChevronDown className="w-3.5 h-3.5 text-blue-800" />
+                      ) : (
+                        <IconChevronRight className="w-3.5 h-3.5 text-blue-800" />
+                      )}
+                    </button>
+                  ) : (
+                    <Link
+                      href="/commercial/schedule"
+                      title="Área Comercial — Agendamiento de Visitas"
+                      className={`flex items-center justify-center p-2 rounded-lg text-xs font-semibold transition-all ${
+                        isCommercialActive
+                          ? "bg-blue-700 text-white shadow-xs"
+                          : "text-slate-700 hover:bg-blue-100/80 hover:text-blue-950"
+                      }`}
+                    >
+                      <IconBriefcase className="w-4 h-4" />
+                    </Link>
+                  )}
 
-                    {(permissions.canAccessMarketingCalendar ?? true) && (
+                  {/* Submódulos de Comercial desplegables */}
+                  {(!isCollapsed ? commercialOpen : false) && (
+                    <div className="pl-4 ml-2 border-l border-blue-200 space-y-1 pt-1">
                       <Link
-                        href="/marketing/calendar"
+                        href="/commercial/schedule"
                         className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
-                          isRouteActive("/marketing/calendar", true)
+                          isRouteActive("/commercial/schedule", true)
                             ? "bg-blue-700 text-white font-bold shadow-xs"
                             : "text-slate-700 hover:bg-blue-100/80 hover:text-blue-950"
                         }`}
                       >
                         <IconCalendar className="w-3.5 h-3.5 shrink-0" />
-                        <span className="truncate">Calendario de Contenidos</span>
+                        <span className="truncate">Agendamiento de Visitas</span>
                       </Link>
-                    )}
-
-                    {(permissions.canAccessMarketingEquipment ?? true) && (
-                      <Link
-                        href="/marketing/equipment"
-                        className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
-                          isRouteActive("/marketing/equipment", true)
-                            ? "bg-blue-700 text-white font-bold shadow-xs"
-                            : "text-slate-700 hover:bg-blue-100/80 hover:text-blue-950"
-                        }`}
-                      >
-                        <IconPackage className="w-3.5 h-3.5 shrink-0" />
-                        <span className="truncate">Inventario y Préstamos</span>
-                      </Link>
-                    )}
-                  </div>
-                )}
-              </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

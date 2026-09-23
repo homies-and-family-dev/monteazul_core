@@ -76,6 +76,9 @@ model User {
   goalsCreated              Goal[] @relation("GoalCreator")
   goalProgressUpdates       GoalProgressUpdate[]
   goalTasksAssigned         GoalTask[] @relation("GoalTaskAssignee")
+
+  commercialBookingsAssigned CommercialBooking[] @relation("CommercialBookingAdvisor")
+  commercialBookingsCreated  CommercialBooking[] @relation("CommercialBookingCreator")
 }
 
 // A user's operational access to an area (independent from "can file requests")
@@ -476,6 +479,39 @@ model GoalTask {
 
   @@index([goalId])
   @@index([status])
+}
+
+// ------------------------------------------------------------
+// COMMERCIAL BOOKINGS / AGENDAMIENTO DE VISITAS A TERRENO
+// ------------------------------------------------------------
+
+model CommercialBooking {
+  id                String    @id @default(cuid())
+  project           String    // "Monteazul Club Náutico", "Golf Club", "Reservas de Prado", "Pirate Paradise", "Las Victorias", etc.
+  clientName        String
+  clientEmail       String
+  clientPhone       String    // Teléfono / WhatsApp
+  numAttendees      Int       @default(1)
+  date              DateTime  // Fecha y hora de inicio de la visita
+  durationMinutes   Int       @default(90) // Duración estándar de 90 min (como zcal)
+  status            String    @default("AGENDADA") // "AGENDADA" | "CONFIRMADA" | "REALIZADA" | "CANCELADA" | "REPROGRAMADA" | "NO_ASISTIO"
+  notes             String?   // Notas de visita / Encuesta previa
+  transportNeed     Boolean   @default(false) // Si requiere transporte proporcionado por Monteazul
+  feedbackNotes     String?   // Notas de seguimiento comercial posteriores a la visita
+
+  assignedAdvisorId String?
+  assignedAdvisor   User?     @relation("CommercialBookingAdvisor", fields: [assignedAdvisorId], references: [id])
+
+  createdById       String?
+  createdBy         User?     @relation("CommercialBookingCreator", fields: [createdById], references: [id])
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([date])
+  @@index([status])
+  @@index([project])
+  @@index([assignedAdvisorId])
 }
 
 

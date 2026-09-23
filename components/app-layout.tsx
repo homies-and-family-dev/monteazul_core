@@ -96,6 +96,16 @@ export default async function AppLayout({
     canAccessMarketingCalendar ||
     canAccessMarketingEquipment;
 
+  // Capacidades operativas del Área Comercial:
+  const isCommercialMember = areasList.includes("Comercial");
+  const canAccessCommercialSchedule =
+    isGeneralAdmin ||
+    isCommercialMember ||
+    permissionsList.includes("commercial:schedule") ||
+    permissionsList.includes("commercial:view");
+
+  const canAccessCommercial = canAccessCommercialSchedule;
+
   const permissions = {
     isGeneralAdmin,
     canAccessManagement,
@@ -106,6 +116,8 @@ export default async function AppLayout({
     canAccessMarketingCampaigns,
     canAccessMarketingCalendar,
     canAccessMarketingEquipment,
+    canAccessCommercial,
+    canAccessCommercialSchedule,
   };
 
   // Obtenemos los tipos de catálogos maestros para desplegarlos como submenús dinámicos
