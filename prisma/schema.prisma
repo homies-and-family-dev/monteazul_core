@@ -64,6 +64,9 @@ model User {
   marketingContentsCreated  MarketingContent[] @relation("MarketingContentCreator")
   marketingContentsAssigned MarketingContent[] @relation("MarketingContentAssignee")
 
+  campaignsCreated          MarketingCampaign[] @relation("CampaignCreator")
+  campaignsAssigned         MarketingCampaign[] @relation("CampaignAssignee")
+
   equipmentLoansBorrower    EquipmentLoan[] @relation("EquipmentBorrower")
   equipmentLoansAuthorized  EquipmentLoan[] @relation("EquipmentLoanAuthorizer")
 
@@ -79,6 +82,14 @@ model User {
 
   commercialBookingsAssigned CommercialBooking[] @relation("CommercialBookingAdvisor")
   commercialBookingsCreated  CommercialBooking[] @relation("CommercialBookingCreator")
+
+  commercialQuotesCreated   CommercialQuote[]    @relation("CommercialQuoteCreator")
+  commercialQuotesAssigned  CommercialQuote[]    @relation("CommercialQuoteAdvisor")
+  commercialQuotesValidated CommercialQuote[]    @relation("CommercialQuoteValidator")
+  commercialContractsCreated CommercialContract[] @relation("CommercialContractCreator")
+
+  commercialClientsCreated  CommercialClient[]   @relation("CommercialClientCreator")
+  commercialClientsAdvised  CommercialClient[]   @relation("CommercialClientAdvisor")
 }
 
 // A user's operational access to an area (independent from "can file requests")
@@ -302,12 +313,53 @@ model MarketingContent {
   requestId    String?   // Vinculación opcional con una solicitud del Core Corporativo
   request      Request?  @relation(fields: [requestId], references: [id])
 
+  campaignId   String?   // Vinculación con Campaña de Marketing
+  campaign     MarketingCampaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
   @@index([date])
   @@index([status])
   @@index([brand])
+  @@index([campaignId])
+}
+
+// ------------------------------------------------------------
+// MARKETING CAMPAIGNS (Módulo Exclusivo de Campañas de Marketing)
+// ------------------------------------------------------------
+
+model MarketingCampaign {
+  id              String            @id @default(cuid())
+  code            String            @unique // ej: "CMP-2026-001"
+  name            String            // Título o nombre de la campaña
+  brand           String            // Marca: "Monte Azul", "Monte Azul Inmobiliaria", etc.
+  projectName     String?           // Proyecto inmobiliario relacionado (ej. "Altos del Este")
+  objective       String            // "Generación de Leads", "Branding y Reconocimiento", "Lanzamiento Inmobiliario", "Conversión y Ventas"
+  startDate       DateTime          // Fecha de inicio
+  endDate         DateTime?         // Fecha fin estimada
+  status          String            @default("Planificación") // "Planificación" | "Activa" | "Pausada" | "Finalizada" | "Cancelada"
+  budget          Float             @default(0) // Presupuesto asignado en COP
+  spent           Float             @default(0) // Presupuesto ejecutado en COP
+  targetAudience  String?           // Segmento / Público objetivo
+  channels        String            // Canales: "Meta Ads, Google Ads, Vallas, Redes, Eventos"
+  description     String?           @db.Text // Concepto creativo y descripción
+  expectedKpis    String?           @db.Text // Indicadores y metas esperadas (leads, conversiones, etc.)
+
+  createdById     String
+  createdBy       User              @relation("CampaignCreator", fields: [createdById], references: [id])
+
+  assignedToId    String?
+  assignedTo      User?             @relation("CampaignAssignee", fields: [assignedToId], references: [id])
+
+  contents        MarketingContent[]
+
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([status])
+  @@index([brand])
+  @@index([startDate])
 }
 
 // ------------------------------------------------------------
@@ -482,37 +534,301 @@ model GoalTask {
 }
 
 // ------------------------------------------------------------
+// COMMERCIAL CLIENTS / DIRECTORIO UNIFICADO DE CLIENTES
+// ------------------------------------------------------------
+
+model CommercialClient {
+  id                 String              @id @default(cuid())
+  name               String              // Nombre completo o razón social
+  docType            String              @default("CC") // CC, CE, NIT, Pasaporte
+  docNumber          String?             @unique // Identificación única (opcional al inicio)
+  phone              String              // Teléfono / WhatsApp
+  email              String?             // Correo electrónico
+  address            String?             // Dirección
+  city               String?             @default("Colombia")
+  civilStatus        String?             // Soltero(a), Casado(a), etc.
+  bank               String?             // Entidad / Cuenta bancaria
+  occupation         String?             // Ocupación o profesión
+  notes              String?             // Perfil comercial y notas
+
+  // Relaciones para trazabilidad 360°
+  bookings           CommercialBooking[]
+  quotes             CommercialQuote[]
+  contracts          CommercialContract[]
+
+  assignedAdvisorId  String?
+  assignedAdvisor    User?               @relation("CommercialClientAdvisor", fields: [assignedAdvisorId], references: [id])
+  createdById        String?
+  createdBy          User?               @relation("CommercialClientCreator", fields: [createdById], references: [id])
+
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  @@index([name])
+  @@index([phone])
+  @@index([email])
+}
+
+// ------------------------------------------------------------
 // COMMERCIAL BOOKINGS / AGENDAMIENTO DE VISITAS A TERRENO
 // ------------------------------------------------------------
 
 model CommercialBooking {
-  id                String    @id @default(cuid())
-  project           String    // "Monteazul Club Náutico", "Golf Club", "Reservas de Prado", "Pirate Paradise", "Las Victorias", etc.
+  id                String            @id @default(cuid())
+  project           String            // "Monteazul Club Náutico", "Golf Club", "Reservas de Prado", "Pirate Paradise", "Las Victorias", etc.
   clientName        String
   clientEmail       String
-  clientPhone       String    // Teléfono / WhatsApp
-  numAttendees      Int       @default(1)
-  date              DateTime  // Fecha y hora de inicio de la visita
-  durationMinutes   Int       @default(90) // Duración estándar de 90 min (como zcal)
-  status            String    @default("AGENDADA") // "AGENDADA" | "CONFIRMADA" | "REALIZADA" | "CANCELADA" | "REPROGRAMADA" | "NO_ASISTIO"
-  notes             String?   // Notas de visita / Encuesta previa
-  transportNeed     Boolean   @default(false) // Si requiere transporte proporcionado por Monteazul
-  feedbackNotes     String?   // Notas de seguimiento comercial posteriores a la visita
+  clientPhone       String            // Teléfono / WhatsApp
+  numAttendees      Int               @default(1)
+  date              DateTime          // Fecha y hora de inicio de la visita
+  durationMinutes   Int               @default(90) // Duración estándar de 90 min (como zcal)
+  status            String            @default("AGENDADA") // "AGENDADA" | "CONFIRMADA" | "REALIZADA" | "CANCELADA" | "REPROGRAMADA" | "NO_ASISTIO"
+  notes             String?           // Notas de visita / Encuesta previa
+  transportNeed     Boolean           @default(false) // Si requiere transporte proporcionado por Monteazul
+  feedbackNotes     String?           // Notas de seguimiento comercial posteriores a la visita
+
+  // Vinculación al cliente unificado
+  clientId          String?
+  client            CommercialClient? @relation(fields: [clientId], references: [id])
+
+  quotes            CommercialQuote[]
 
   assignedAdvisorId String?
-  assignedAdvisor   User?     @relation("CommercialBookingAdvisor", fields: [assignedAdvisorId], references: [id])
+  assignedAdvisor   User?             @relation("CommercialBookingAdvisor", fields: [assignedAdvisorId], references: [id])
 
   createdById       String?
-  createdBy         User?     @relation("CommercialBookingCreator", fields: [createdById], references: [id])
+  createdBy         User?             @relation("CommercialBookingCreator", fields: [createdById], references: [id])
 
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
 
   @@index([date])
   @@index([status])
   @@index([project])
   @@index([assignedAdvisorId])
+  @@index([clientId])
 }
 
+// ------------------------------------------------------------
+// COMMERCIAL MODULE: COTIZACIONES Y CONTRATOS DE SEPARACIÓN
+// ------------------------------------------------------------
 
+enum CommercialQuoteStatus {
+  BORRADOR
+  EMITIDA
+  EN_VALIDACION
+  CONTRATADA
+  CANCELADA
+}
 
+enum CommercialContractStatus {
+  VIGENTE
+  FIRMADO
+  LEGALIZADO
+  DESISTIDO
+  ANULADO
+}
+
+model CommercialQuote {
+  id                  String                @id @default(cuid())
+  consecutive         String                @unique // ej. "COT-2026-0001"
+  status              CommercialQuoteStatus @default(EMITIDA)
+  date                DateTime              @default(now())
+  validityDays        Int                   @default(3) // 3 días según nota legal del PDF
+
+  // Datos del Proyecto y Lote
+  projectName         String                // Nombre del proyecto comercial
+  stage               String?               // Etapa (ej: "1")
+  block               String?               // Manzana (ej: "A")
+  lotNumber           String                // Lote (ej: "Lote 14")
+  totalArea           Float                 // Área total en m²
+  pricePerSquareMeter Float                 // Valor por m²
+  totalPrice          Float                 // Valor del Inmueble (totalArea * pricePerSquareMeter)
+
+  // Cliente / Titular Principal (Optante 1)
+  clientName          String
+  clientDocType       String                @default("CC") // CC, CE, NIT, Pasaporte
+  clientDocNumber     String
+  clientPhone         String
+  clientEmail         String
+  clientAddress       String
+  clientCity          String                @default("Colombia")
+  clientCivilStatus   String?               // Soltero(a), Casado(a), Unión Libre, Divorciado(a), Viudo(a)
+  clientBank          String?               // Banco o entidad financiera
+  clientParticipation Float                 @default(100) // % de participación (ej. 100% o 50%)
+
+  // Segundo Comprador (Optante 2 - Opcional)
+  hasSecondOptant           Boolean         @default(false)
+  secondOptantName          String?
+  secondOptantDocType       String?         @default("CC")
+  secondOptantDocNumber     String?
+  secondOptantPhone         String?
+  secondOptantEmail         String?
+  secondOptantAddress       String?
+  secondOptantCity          String?
+  secondOptantCivilStatus   String?
+  secondOptantBank          String?
+  secondOptantParticipation Float?
+
+  // Plan Financiero y Descuentos
+  hasDiscount         Boolean               @default(false)
+  discountAmount      Float                 @default(0)
+  discountDescription String?               // Motivo o bono de descuento
+  finalPrice          Float                 // Valor final Lote (totalPrice - discountAmount)
+  reservationAmount   Float                 @default(0) // Valor de separación pactado
+  reservationDate     DateTime?             // Fecha de pago de separación
+  initialQuotaPercent Float                 @default(10) // % cuota inicial (10% según contrato)
+  initialQuotaAmount  Float                 @default(0) // Valor cuota inicial
+  financedBalance     Float                 // Saldo valor lote a financiar
+  installmentsCount   Int                   @default(12) // Número de cuotas pactadas
+  installmentAmount   Float                 // Valor de la cuota mensual aproximada
+  observations        String?               // Observaciones
+
+  // Validación de Datos para pase a Contrato
+  dataValidated       Boolean               @default(false)
+  validatedAt         DateTime?
+  validatedById       String?
+  validatedBy         User?                 @relation("CommercialQuoteValidator", fields: [validatedById], references: [id])
+  validationNotes     String?
+
+  // Asignación Comercial y Auditoría
+  advisorId           String?
+  advisor             User?                 @relation("CommercialQuoteAdvisor", fields: [advisorId], references: [id])
+  createdById         String?
+  createdBy           User?                 @relation("CommercialQuoteCreator", fields: [createdById], references: [id])
+
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+
+  // Contrato de separación generado a partir de esta cotización
+  contract            CommercialContract?
+
+  // Vinculación opcional con agendamiento previo (trazabilidad de origen de la cita)
+  bookingId           String?
+  booking             CommercialBooking?    @relation(fields: [bookingId], references: [id])
+
+  // Vinculación al cliente unificado
+  clientId            String?
+  client              CommercialClient?     @relation(fields: [clientId], references: [id])
+
+  @@index([status])
+  @@index([projectName])
+  @@index([clientDocNumber])
+  @@index([advisorId])
+  @@index([clientId])
+  @@index([bookingId])
+}
+
+model CommercialContract {
+  id                      String                   @id @default(cuid())
+  contractNumber          String                   @unique // ej. "CS-2026-0001"
+  status                  CommercialContractStatus @default(VIGENTE)
+  date                    DateTime                 @default(now())
+
+  // Vinculación estricta con la cotización
+  quoteId                 String                   @unique
+  quote                   CommercialQuote          @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  // Promotor (Snapshot institucional Monteazul Group S.A.S)
+  promoterName            String                   @default("MONTEAZUL GROUP S.A.S")
+  promoterNit             String                   @default("901.662.298-6")
+  promoterRegistration    String                   @default("352661 de la Cámara de Comercio de Ibagué")
+  promoterLegalRep        String                   @default("ANDRES FELIPE ALVAREZ GRANADOS")
+  promoterRepDoc          String                   @default("1.110.540.527")
+  promoterAddress         String                   @default("Cra 5ta Sur No. 83-40 Mall Comercial La Florida 3 local 8, Ibagué / Bogotá: Edificio Business 93 Of 406")
+  promoterPhone           String                   @default("+573124233810")
+  promoterEmail           String                   @default("gerencia.comercial@monteazulgroup.com")
+
+  // Objeto y Datos del Inmueble
+  projectName             String
+  projectLocation         String                   // Ubicación legal del predio/conjunto
+  stage                   String                   @default("1")
+  block                   String                   @default("A")
+  lotNumber               String
+  totalArea               Float
+
+  // Optante 1 (Titular)
+  optant1Name             String
+  optant1DocType          String                   @default("CC")
+  optant1Doc              String
+  optant1Participation    Float                    @default(100)
+  optant1Address          String
+  optant1City             String
+  optant1Phone            String
+  optant1Email            String
+  optant1CivilStatus      String
+  optant1Bank             String
+
+  // Optante 2 (si aplica)
+  hasOptant2              Boolean                  @default(false)
+  optant2Name             String?
+  optant2DocType          String?
+  optant2Doc              String?
+  optant2Participation    Float?
+  optant2Address          String?
+  optant2City             String?
+  optant2Phone            String?
+  optant2Email            String?
+  optant2CivilStatus      String?
+  optant2Bank             String?
+
+  // Cláusulas Económicas y Financieras
+  totalPrice              Float
+  totalPriceWords         String?                  // Texto en letras (ej: "CIEN PESOS M/CTE")
+  reservationAmount       Float
+  reservationAmountWords  String?
+  reservationPaymentDate  DateTime?
+  hasDiscount             Boolean                  @default(false)
+  discountAmount          Float                    @default(0)
+  initialQuotaPercent     Float                    @default(10)
+  initialQuotaAmount      Float
+  balanceAmount           Float
+  balanceAmountWords      String?
+  installmentsCount       Int                      @default(12)
+  authorizedBankAccounts  String                   // Cuentas autorizadas del proyecto para pagos
+
+  // Control de firmas y notas
+  isSigned                Boolean                  @default(false)
+  signedAt                DateTime?
+  notes                   String?
+
+  // Auditoría
+  createdById             String?
+  createdBy               User?                    @relation("CommercialContractCreator", fields: [createdById], references: [id])
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+
+  // Vinculación al cliente unificado
+  clientId                String?
+  client                  CommercialClient?        @relation(fields: [clientId], references: [id])
+
+  @@index([contractNumber])
+  @@index([status])
+  @@index([projectName])
+  @@index([clientId])
+}
+
+// ------------------------------------------------------------
+// PROYECTOS INMOBILIARIOS / COMERCIALES
+// ------------------------------------------------------------
+
+model CommercialProject {
+  id                     String   @id @default(cuid())
+  slug                   String   @unique
+  name                   String   // Nombre comercial visible (ej. "Club Náutico Monteazul")
+  legalName              String   // Denominación legal para minutas y contratos (ej. "CLUB NÁUTICO MONTEAZUL")
+  location               String   // Ubicación legal (ej. "Vereda Tomogó zona del municipio de Prado – Tolima")
+  cityDepartment         String   // Ciudad / Departamento (ej. "Prado, Tolima")
+  authorizedBankAccounts String   // Cuentas bancarias autorizadas para pagos y separaciones
+  defaultPricePerM2      Float    @default(150000) // Precio base por m² por defecto
+  stages                 String[] @default(["Etapa 1"]) // Etapas disponibles
+  blocks                 String[] @default(["Manzana A"]) // Manzanas disponibles
+  description            String?  // Descripción / características comerciales
+  logoUrl                String?  // Ruta o URL de la imagen del logotipo del proyecto
+  active                 Boolean  @default(true) // Habilitado / Deshabilitado
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  @@index([active])
+  @@index([name])
+}

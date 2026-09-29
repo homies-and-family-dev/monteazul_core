@@ -47,13 +47,7 @@ export default async function MarketingPage() {
 
   const isGeneralAdmin =
     rolesList.includes("Administrador General") ||
-    rolesList.includes("Gerencia") ||
-    permissionsList.includes("masters:manage_roles");
-
-  const isMarketingMember = areasList.includes("Marketing");
-  const isOtherAreaDirector =
-    rolesList.some((r) => r.toLowerCase().includes("director")) &&
-    !areasList.includes("Marketing");
+    rolesList.includes("Gerencia");
 
   const canAccessMarketing =
     isGeneralAdmin ||
@@ -84,31 +78,18 @@ export default async function MarketingPage() {
     );
   }
 
-  // 1. Obtener Área de Marketing
-  const marketingArea = await prisma.area.findUnique({
-    where: { code: "MKT" },
+  // 1. Obtener Campañas creadas directamente en el Módulo de Marketing
+  // (Sin mezclar solicitudes de radicación general, que corresponden exclusivamente a /requests)
+  const campaigns = await prisma.marketingCampaign.findMany({
+    include: {
+      assignedTo: { select: { id: true, name: true, email: true } },
+      createdBy: { select: { id: true, name: true } },
+      _count: { select: { contents: true } },
+    },
+    orderBy: { startDate: "desc" },
   });
 
-  // 2. Requerimientos canalizados a Marketing
-  const requests = marketingArea
-    ? await prisma.request.findMany({
-        where: { destinationAreaId: marketingArea.id },
-        include: {
-          originArea: { select: { name: true, code: true } },
-          filedBy: { select: { name: true } },
-          assignments: {
-            include: { user: { select: { name: true } } },
-            orderBy: { date: "desc" },
-            take: 1,
-          },
-          tasks: { select: { id: true, status: true } },
-          _count: { select: { comments: true, files: true } },
-        },
-        orderBy: { createdAt: "desc" },
-      })
-    : [];
-
-  // 3. Próximas publicaciones del calendario editorial
+  // 2. Próximas publicaciones del calendario editorial
   const upcomingContents = await prisma.marketingContent.findMany({
     include: {
       assignedTo: { select: { name: true } },
@@ -117,7 +98,31 @@ export default async function MarketingPage() {
     take: 6,
   });
 
-  // 4. Métricas de equipos y contenidos
+  // 3. Proyectos Comerciales / Inmobiliarios para el selector de campañas
+  const commercialProjects = await prisma.commercialProject.findMany({
+    where: { active: true },
+    select: { id: true, name: true },
+    orderBy: { name: "asc" },
+  });
+
+  // 4. Usuarios de Marketing / Administradores para asignar responsables
+  const marketingArea = await prisma.area.findUnique({
+    where: { code: "MKT" },
+  });
+
+  const availableUsers = await prisma.user.findMany({
+    where: {
+      active: true,
+      OR: [
+        marketingArea ? { areas: { some: { areaId: marketingArea.id } } } : {},
+        { roles: { some: { role: { name: { in: ["Administrador General", "Gerencia"] } } } } },
+      ],
+    },
+    select: { id: true, name: true },
+    orderBy: { name: "asc" },
+  });
+
+  // 5. Métricas de equipos, publicaciones y presupuestos
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
@@ -143,15 +148,19 @@ export default async function MarketingPage() {
     }),
   ]);
 
+  const activeCampaigns = campaigns.filter(
+    (c) => c.status === "Activa" || c.status === "Planificación"
+  );
+  const totalBudget = campaigns.reduce((acc, c) => acc + (c.budget || 0), 0);
+  const totalSpent = campaigns.reduce((acc, c) => acc + (c.spent || 0), 0);
+
   const metrics = {
-    totalRequests: requests.length,
-    activeRequests: requests.filter((r) => r.status !== "CLOSED").length,
-    inProgressRequests: requests.filter(
-      (r) => r.status === "IN_PROGRESS" || r.status === "IN_REVIEW"
-    ).length,
-    deliveredRequests: requests.filter(
-      (r) => r.status === "DELIVERED" || r.status === "CLOSED"
-    ).length,
+    totalCampaigns: campaigns.length,
+    activeCampaigns: activeCampaigns.length,
+    inPlanningCampaigns: campaigns.filter((c) => c.status === "Planificación").length,
+    finishedCampaigns: campaigns.filter((c) => c.status === "Finalizada").length,
+    totalBudget,
+    totalSpent,
     totalContentsMonth,
     publishedContents,
     totalEquipment,
@@ -163,10 +172,13 @@ export default async function MarketingPage() {
     <div className="bg-white min-h-screen">
       <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6">
         <CampaignsDashboard
-          requests={requests}
+          campaigns={campaigns}
           upcomingContents={upcomingContents}
+          projects={commercialProjects}
+          availableUsers={availableUsers}
           metrics={metrics}
           userName={currentUser.name}
+          canManage={canAccessMarketing}
         />
       </div>
     </div>

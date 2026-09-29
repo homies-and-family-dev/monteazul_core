@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
+import { findOrCreateCommercialClient } from "@/lib/commercial-clients";
 
 export async function createCommercialBooking(formData: FormData) {
   const session = await auth();
@@ -31,6 +32,15 @@ export async function createCommercialBooking(formData: FormData) {
     throw new Error("Fecha u hora inválida.");
   }
 
+  // Buscar o crear cliente en el directorio unificado para trazabilidad
+  const unifiedClient = await findOrCreateCommercialClient({
+    name: clientName,
+    phone: clientPhone,
+    email: clientEmail || null,
+    advisorId: assignedAdvisorId,
+    createdById: session.user.id,
+  });
+
   const booking = await prisma.commercialBooking.create({
     data: {
       project,
@@ -44,11 +54,14 @@ export async function createCommercialBooking(formData: FormData) {
       notes,
       transportNeed,
       assignedAdvisorId,
+      clientId: unifiedClient.id,
       createdById: session.user.id,
     },
   });
 
   revalidatePath("/commercial/schedule");
+  revalidatePath("/commercial/clients");
+  revalidatePath("/commercial");
   return { success: true, bookingId: booking.id };
 }
 

@@ -56,8 +56,7 @@ export default async function ManagementDashboardPage({ searchParams }: PageProp
 
   const isGeneralAdmin =
     rolesList.includes("Administrador General") ||
-    rolesList.includes("Gerencia") ||
-    permissionsList.includes("masters:manage_roles");
+    rolesList.includes("Gerencia");
 
   const canAccessManagement =
     isGeneralAdmin || permissionsList.includes("management:view");

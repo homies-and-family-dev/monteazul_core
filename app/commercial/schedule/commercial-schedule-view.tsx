@@ -1,12 +1,14 @@
 "use client";
 
-import React, { useState, useTransition } from "react";
+import React, { useState, useEffect, useTransition } from "react";
+import Link from "next/link";
 import {
   createCommercialBooking,
   updateCommercialBookingStatus,
   updateCommercialBooking,
   deleteCommercialBooking,
 } from "./actions";
+import { createCommercialQuote, type QuoteFormData } from "../quotes/actions";
 
 export interface CommercialBookingItem {
   id: string;
@@ -26,21 +28,50 @@ export interface CommercialBookingItem {
   createdById: string | null;
   createdBy: { id: string; name: string } | null;
   createdAt: Date;
+  quotes?: Array<{
+    id: string;
+    consecutive: string;
+    status: string;
+    finalPrice: number;
+    date: Date;
+    projectName: string;
+    lotNumber: string;
+    dataValidated: boolean;
+    contract?: { id: string; contractNumber: string; status: string } | null;
+  }>;
+  client?: {
+    id: string;
+    docType: string;
+    docNumber: string | null;
+    address: string | null;
+    city: string | null;
+    civilStatus: string | null;
+    bank: string | null;
+  } | null;
 }
 
 interface Props {
   initialBookings: CommercialBookingItem[];
   advisors: Array<{ id: string; name: string; email: string }>;
+  projects?: Array<{
+    id: string;
+    name: string;
+    defaultPricePerM2?: number;
+    stages?: string[];
+    blocks?: string[];
+  }>;
   canEdit: boolean;
 }
 
-const PROJECTS = [
-  "Monteazul Club Náutico",
-  "Golf Club",
+const DEFAULT_PROJECTS = [
+  "Altos Las Victorias",
+  "Club Náutico Monteazul",
+  "Entre Montañas",
+  "Golf Club Monteazul",
+  "Llanos Las Victorias",
+  "Monteverde del Restrepo",
+  "Quintas Las Victorias",
   "Reservas de Prado",
-  "Pirate Paradise",
-  "Las Victorias",
-  "Otro Proyecto",
 ];
 
 const TIME_SLOTS = [
@@ -119,12 +150,37 @@ const DAY_NAMES = [
   "Domingo",
 ];
 
+function formatCOP(amount: number): string {
+  return new Intl.NumberFormat("es-CO", {
+    style: "currency",
+    currency: "COP",
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
 export default function CommercialScheduleView({
   initialBookings,
   advisors,
+  projects,
   canEdit,
 }: Props) {
+  const projectList =
+    projects && projects.length > 0
+      ? projects.map((p) => p.name)
+      : DEFAULT_PROJECTS;
+
   const [bookings, setBookings] = useState<CommercialBookingItem[]>(initialBookings);
+
+  useEffect(() => {
+    setBookings(initialBookings);
+    if (selectedBooking) {
+      const updated = initialBookings.find((b) => b.id === selectedBooking.id);
+      if (updated) {
+        setSelectedBooking(updated);
+      }
+    }
+  }, [initialBookings]);
+
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [viewMode, setViewMode] = useState<"month" | "week" | "list">("month");
 
@@ -139,8 +195,45 @@ export default function CommercialScheduleView({
   const [selectedBooking, setSelectedBooking] = useState<CommercialBookingItem | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
+  // Modal para Generación de Cotización desde Agendamiento
+  const [showQuoteModal, setShowQuoteModal] = useState(false);
+  const [quoteBooking, setQuoteBooking] = useState<CommercialBookingItem | null>(null);
+  const [quoteFormData, setQuoteFormData] = useState<QuoteFormData>({
+    projectName: "",
+    stage: "Etapa 1",
+    block: "Manzana A",
+    lotNumber: "Lote 01",
+    totalArea: 1000,
+    pricePerSquareMeter: 185000,
+    clientName: "",
+    clientDocType: "CC",
+    clientDocNumber: "",
+    clientPhone: "",
+    clientEmail: "",
+    clientAddress: "",
+    clientCity: "Ibagué",
+    clientCivilStatus: "Soltero(a)",
+    clientBank: "Bancolombia",
+    clientParticipation: 100,
+    hasSecondOptant: false,
+    hasDiscount: false,
+    discountAmount: 0,
+    discountDescription: "",
+    reservationAmount: 5000000,
+    initialQuotaPercent: 10,
+    installmentsCount: 12,
+    observations: "",
+    advisorId: "",
+    bookingId: "",
+  });
+  const [quoteFormError, setQuoteFormError] = useState<string | null>(null);
+  const [quoteSuccessNotice, setQuoteSuccessNotice] = useState<{
+    quoteId: string;
+    consecutive: string;
+  } | null>(null);
+
   // Estados de formulario nuevo agendamiento (zcal replica)
-  const [newProject, setNewProject] = useState(PROJECTS[0]);
+  const [newProject, setNewProject] = useState(projectList[0] || "Club Náutico Monteazul");
   const [newDate, setNewDate] = useState(() => {
     const today = new Date();
     return today.toISOString().split("T")[0];
@@ -156,6 +249,137 @@ export default function CommercialScheduleView({
 
   const [isPending, startTransition] = useTransition();
   const [formError, setFormError] = useState<string | null>(null);
+
+  // Handlers para cotización desde agendamiento
+  const openQuoteModalForBooking = (b: CommercialBookingItem) => {
+    setQuoteFormError(null);
+    setQuoteSuccessNotice(null);
+    setQuoteBooking(b);
+
+    const fullProjects = projects || [];
+    const projConfig = fullProjects.find((p) => p.name === b.project);
+    const defaultM2 = projConfig?.defaultPricePerM2 || 185000;
+    const stage = projConfig?.stages?.[0] || "Etapa 1";
+    const block = projConfig?.blocks?.[0] || "Manzana A";
+
+    setQuoteFormData({
+      projectName: b.project,
+      stage,
+      block,
+      lotNumber: "Lote 01",
+      totalArea: 1000,
+      pricePerSquareMeter: defaultM2,
+      clientName: b.clientName,
+      clientDocType: b.client?.docType || "CC",
+      clientDocNumber: b.client?.docNumber || "",
+      clientPhone: b.clientPhone,
+      clientEmail: b.clientEmail || "",
+      clientAddress: b.client?.address || "",
+      clientCity: b.client?.city || "Ibagué",
+      clientCivilStatus: b.client?.civilStatus || "Soltero(a)",
+      clientBank: b.client?.bank || "Bancolombia",
+      clientParticipation: 100,
+      hasSecondOptant: false,
+      hasDiscount: false,
+      discountAmount: 0,
+      discountDescription: "",
+      reservationAmount: 5000000,
+      initialQuotaPercent: 10,
+      installmentsCount: 12,
+      observations:
+        b.feedbackNotes ||
+        b.notes ||
+        `Cotización comercial generada a partir de visita a terreno cumplida el ${new Date(
+          b.date
+        ).toLocaleDateString("es-CO")}.`,
+      advisorId: b.assignedAdvisorId || "",
+      bookingId: b.id,
+    });
+
+    setShowQuoteModal(true);
+  };
+
+  const handleQuoteProjectChange = (projectName: string) => {
+    const fullProjects = projects || [];
+    const projConfig = fullProjects.find((p) => p.name === projectName);
+    const defaultM2 = projConfig?.defaultPricePerM2 || quoteFormData.pricePerSquareMeter || 185000;
+    const stage = projConfig?.stages?.[0] || "Etapa 1";
+    const block = projConfig?.blocks?.[0] || "Manzana A";
+    setQuoteFormData((prev) => ({
+      ...prev,
+      projectName,
+      stage,
+      block,
+      pricePerSquareMeter: defaultM2,
+    }));
+  };
+
+  const handleQuoteSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setQuoteFormError(null);
+
+    startTransition(async () => {
+      try {
+        const res = await createCommercialQuote(quoteFormData);
+        if (!res.success || !res.quoteId) {
+          throw new Error(res.error || "Error al crear la cotización");
+        }
+
+        const calculatedTotalPrice = Math.round(
+          quoteFormData.totalArea * quoteFormData.pricePerSquareMeter
+        );
+        const calculatedFinalPrice = Math.max(
+          0,
+          calculatedTotalPrice -
+            (quoteFormData.hasDiscount ? quoteFormData.discountAmount || 0 : 0)
+        );
+
+        const newQuoteObj = {
+          id: res.quoteId,
+          consecutive: res.consecutive!,
+          status: "EMITIDA",
+          finalPrice: calculatedFinalPrice,
+          date: new Date(),
+          projectName: quoteFormData.projectName,
+          lotNumber: quoteFormData.lotNumber,
+          dataValidated: false,
+        };
+
+        // Actualizar citas en el estado local marcando como REALIZADA y vinculando cotización
+        setBookings((prev) =>
+          prev.map((b) =>
+            b.id === quoteFormData.bookingId
+              ? {
+                  ...b,
+                  status: "REALIZADA",
+                  quotes: [newQuoteObj, ...(b.quotes || [])],
+                }
+              : b
+          )
+        );
+
+        if (selectedBooking && selectedBooking.id === quoteFormData.bookingId) {
+          setSelectedBooking((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  status: "REALIZADA",
+                  quotes: [newQuoteObj, ...(prev.quotes || [])],
+                }
+              : null
+          );
+        }
+
+        setQuoteSuccessNotice({
+          quoteId: res.quoteId,
+          consecutive: res.consecutive!,
+        });
+        setShowQuoteModal(false);
+      } catch (err: any) {
+        setQuoteFormError(err.message || "Error al crear la cotización.");
+      }
+    });
+  };
 
   // Filtrado de agendamientos
   const filteredBookings = bookings.filter((b) => {
@@ -711,7 +935,7 @@ export default function CommercialScheduleView({
               className="w-full text-xs rounded-lg border border-blue-200 bg-white px-3 py-2 text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-600"
             >
               <option value="ALL">Todos los Proyectos</option>
-              {PROJECTS.map((p) => (
+              {projectList.map((p) => (
                 <option key={p} value={p}>
                   {p}
                 </option>
@@ -824,7 +1048,7 @@ export default function CommercialScheduleView({
                   onChange={(e) => setNewProject(e.target.value)}
                   className="w-full text-xs rounded-lg border border-slate-300 bg-white px-3 py-2.5 font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
                 >
-                  {PROJECTS.map((p) => (
+                  {projectList.map((p) => (
                     <option key={p} value={p}>
                       {p}
                     </option>
@@ -1150,47 +1374,268 @@ export default function CommercialScheduleView({
                 </span>
               </div>
 
+              {/* Notificación de Cotización Exitosa */}
+              {quoteSuccessNotice && (
+                <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-300 text-xs text-emerald-950 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs">
+                  <div className="flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-bold shrink-0">
+                      ✓
+                    </span>
+                    <div>
+                      <span className="font-bold">¡Cotización {quoteSuccessNotice.consecutive} generada con éxito!</span>
+                      <p className="text-[11px] text-emerald-800">
+                        La propuesta comercial ha quedado vinculada a esta visita y al cliente para su seguimiento continuo.
+                      </p>
+                    </div>
+                  </div>
+
+                  <Link
+                    href={`/commercial/quotes/${quoteSuccessNotice.quoteId}`}
+                    className="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold shrink-0 transition-colors shadow-2xs flex items-center gap-1.5"
+                  >
+                    Ver Documento Oficial (PDF) →
+                  </Link>
+                </div>
+              )}
+
+              {/* Trazabilidad Comercial y Cotizaciones */}
+              <div className="space-y-3 pt-3 border-t border-slate-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-blue-950 uppercase tracking-wide">
+                      Trazabilidad y Cotizaciones Comerciales
+                    </span>
+                    {selectedBooking.quotes && selectedBooking.quotes.length > 0 && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
+                        {selectedBooking.quotes.length} {selectedBooking.quotes.length === 1 ? "propuesta" : "propuestas"}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Botón único de nueva cotización en cabecera SOLO cuando es REALIZADA y ya tiene cotizaciones previas */}
+                  {selectedBooking.status === "REALIZADA" &&
+                    selectedBooking.quotes &&
+                    selectedBooking.quotes.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => openQuoteModalForBooking(selectedBooking)}
+                        className="px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-700 hover:bg-blue-800 text-white shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+                        </svg>
+                        + Nueva Cotización
+                      </button>
+                    )}
+                </div>
+
+                {/* Cuando la visita fue REALIZADA y aún no tiene cotizaciones: ÚNICO botón de cotizar */}
+                {selectedBooking.status === "REALIZADA" &&
+                  (!selectedBooking.quotes || selectedBooking.quotes.length === 0) && (
+                    <div className="bg-emerald-50/80 border border-emerald-200 p-4 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+                      <div className="text-xs text-emerald-950">
+                        <div className="font-bold flex items-center gap-1.5 text-emerald-900">
+                          <svg className="w-4 h-4 text-emerald-700 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                          </svg>
+                          Visita Cumplida con Asistencia del Cliente
+                        </div>
+                        <p className="text-[11px] text-emerald-800 mt-1 leading-relaxed">
+                          La visita a terreno fue realizada. Inicie aquí la trazabilidad comercial generando la propuesta formal de cotización.
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => openQuoteModalForBooking(selectedBooking)}
+                        className="px-4 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold shrink-0 transition-colors shadow-xs flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+                        </svg>
+                        Realizar Cotización
+                      </button>
+                    </div>
+                  )}
+
+                {/* Listado de Cotizaciones Asociadas */}
+                {selectedBooking.quotes && selectedBooking.quotes.length > 0 ? (
+                  <div className="space-y-2">
+                    {selectedBooking.quotes.map((q) => (
+                      <div
+                        key={q.id}
+                        className="p-3 rounded-xl border border-blue-200 bg-white hover:border-blue-400 hover:shadow-2xs transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                      >
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-xs font-bold text-blue-900 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                              {q.consecutive}
+                            </span>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                              {q.status}
+                            </span>
+                            {q.contract && (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-900 border border-purple-200">
+                                Contrato {q.contract.contractNumber}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-xs font-semibold text-slate-800">
+                            {q.projectName} · {q.lotNumber}
+                          </div>
+                          <div className="text-[11px] text-slate-500">
+                            Valor: <strong className="text-blue-950 font-bold">{formatCOP(q.finalPrice)}</strong> · Fecha: {new Date(q.date).toLocaleDateString("es-CO")}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Link
+                            href={`/commercial/quotes/${q.id}`}
+                            className="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 text-xs font-semibold transition-colors flex items-center gap-1"
+                          >
+                            Ver Documento Oficial →
+                          </Link>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  selectedBooking.status !== "REALIZADA" && (
+                    <div className="p-3.5 rounded-xl border border-dashed border-slate-200 bg-slate-50/70 text-center space-y-1">
+                      <div className="text-xs font-semibold text-slate-700">
+                        {selectedBooking.status === "CONFIRMADA"
+                          ? "Cita Confirmada · Pendiente Asistencia a Terreno"
+                          : selectedBooking.status === "AGENDADA"
+                          ? "Cita Agendada · Pendiente Confirmación"
+                          : `Estado actual: ${STATUS_CONFIG[selectedBooking.status]?.label || selectedBooking.status}`}
+                      </div>
+                      <p className="text-[11px] text-slate-500 max-w-md mx-auto">
+                        {selectedBooking.status === "CONFIRMADA"
+                          ? "Cuando el cliente asista y la visita se marque como Realizada, se activará en este espacio el botón para realizar la cotización."
+                          : selectedBooking.status === "AGENDADA"
+                          ? "Marque primero la visita como Confirmada. Una vez realizada la visita a terreno con el cliente, quedará habilitado el botón para cotizar."
+                          : "Para generar una cotización formal asociada, la visita debe encontrarse en estado Realizada."}
+                      </p>
+                    </div>
+                  )
+                )}
+              </div>
+
               {/* Acciones de Cambio de Estado */}
               <div className="space-y-2 pt-2 border-t border-slate-200">
                 <span className="text-xs font-bold text-slate-900 block">
                   Actualizar Estado de la Visita
                 </span>
-                <div className="flex flex-wrap gap-2">
-                  {selectedBooking.status !== "CONFIRMADA" && (
+
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* Flujo paso 1: De AGENDADA -> CONFIRMADA */}
+                  {selectedBooking.status === "AGENDADA" && (
                     <button
                       type="button"
                       onClick={() => handleStatusChange(selectedBooking.id, "CONFIRMADA")}
-                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-sky-50 text-sky-800 border border-sky-300 hover:bg-sky-100 transition-colors cursor-pointer"
+                      className="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-sky-600 hover:bg-sky-700 text-white shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
                     >
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                      </svg>
                       Marcar Confirmada
                     </button>
                   )}
-                  {selectedBooking.status !== "REALIZADA" && (
+
+                  {/* Flujo paso 2: De CONFIRMADA -> REALIZADA (Cliente asistió a terreno) */}
+                  {selectedBooking.status === "CONFIRMADA" && (
                     <button
                       type="button"
                       onClick={() => handleStatusChange(selectedBooking.id, "REALIZADA")}
-                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100 transition-colors cursor-pointer"
+                      className="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
                     >
-                      Marcar Realizada
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Marcar como Realizada (Cliente Asistió a Terreno)
                     </button>
                   )}
-                  {selectedBooking.status !== "REPROGRAMADA" && (
+
+                  {/* Si ya es REALIZADA: Indicador y opción de revertir */}
+                  {selectedBooking.status === "REALIZADA" && (
+                    <>
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-bold">
+                        <svg className="w-4 h-4 text-emerald-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                        </svg>
+                        Asistencia Cumplida en Terreno
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleStatusChange(selectedBooking.id, "CONFIRMADA")}
+                        className="px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-300 transition-colors cursor-pointer"
+                      >
+                        Revertir a Confirmada
+                      </button>
+                    </>
+                  )}
+
+                  {/* Opciones complementarias según estado */}
+                  {selectedBooking.status === "CONFIRMADA" && (
+                    <button
+                      type="button"
+                      onClick={() => handleStatusChange(selectedBooking.id, "NO_ASISTIO")}
+                      className="px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-300 transition-colors cursor-pointer"
+                    >
+                      No Asistió
+                    </button>
+                  )}
+
+                  {selectedBooking.status === "CONFIRMADA" && (
+                    <button
+                      type="button"
+                      onClick={() => handleStatusChange(selectedBooking.id, "AGENDADA")}
+                      className="px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-300 transition-colors cursor-pointer"
+                    >
+                      Revertir a Agendada
+                    </button>
+                  )}
+
+                  {selectedBooking.status !== "REPROGRAMADA" && selectedBooking.status !== "CANCELADA" && (
                     <button
                       type="button"
                       onClick={() => handleStatusChange(selectedBooking.id, "REPROGRAMADA")}
-                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-300 hover:bg-amber-100 transition-colors cursor-pointer"
+                      className="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-amber-50 text-amber-800 border border-amber-300 hover:bg-amber-100 transition-colors cursor-pointer"
                     >
                       Reprogramar
                     </button>
                   )}
+
                   {selectedBooking.status !== "CANCELADA" && (
                     <button
                       type="button"
                       onClick={() => handleStatusChange(selectedBooking.id, "CANCELADA")}
-                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-50 text-rose-800 border border-rose-300 hover:bg-rose-100 transition-colors cursor-pointer"
+                      className="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-rose-50 text-rose-800 border border-rose-300 hover:bg-rose-100 transition-colors cursor-pointer"
                     >
                       Cancelar Visita
                     </button>
+                  )}
+
+                  {/* Si está CANCELADA, REPROGRAMADA o NO_ASISTIO: permitir reactivar */}
+                  {(selectedBooking.status === "CANCELADA" ||
+                    selectedBooking.status === "REPROGRAMADA" ||
+                    selectedBooking.status === "NO_ASISTIO") && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handleStatusChange(selectedBooking.id, "AGENDADA")}
+                        className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-50 text-blue-800 border border-blue-300 hover:bg-blue-100 transition-colors cursor-pointer"
+                      >
+                        Reactivar como Agendada
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleStatusChange(selectedBooking.id, "CONFIRMADA")}
+                        className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-sky-50 text-sky-800 border border-sky-300 hover:bg-sky-100 transition-colors cursor-pointer"
+                      >
+                        Marcar Confirmada
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
@@ -1213,6 +1658,441 @@ export default function CommercialScheduleView({
                 Cerrar
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: GENERAR COTIZACIÓN DESDE AGENDAMIENTO */}
+      {showQuoteModal && quoteBooking && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-3xl w-full p-6 shadow-2xl border border-slate-200 my-8 space-y-5">
+            {/* Cabecera */}
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-base font-bold text-blue-950">
+                    Generar Cotización Comercial
+                  </h3>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                    Origen: Visita a Terreno
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 mt-0.5">
+                  Punto de partida de trazabilidad para <strong>{quoteBooking.clientName}</strong> · Proyecto: <strong>{quoteBooking.project}</strong>
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowQuoteModal(false)}
+                className="text-slate-400 hover:text-slate-600 text-lg font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {quoteFormError && (
+              <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-xs font-semibold text-rose-800">
+                {quoteFormError}
+              </div>
+            )}
+
+            <form onSubmit={handleQuoteSubmit} className="space-y-4">
+              {/* Sección 1: Datos del Cliente */}
+              <div className="bg-slate-50/70 p-3.5 rounded-xl border border-slate-200 space-y-3">
+                <span className="text-xs font-bold text-blue-950 uppercase tracking-wide block">
+                  1. Identificación del Cliente (Pre-cargado del Agendamiento)
+                </span>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  <div className="sm:col-span-2">
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      Nombre Completo / Razón Social *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={quoteFormData.clientName}
+                      onChange={(e) =>
+                        setQuoteFormData({ ...quoteFormData, clientName: e.target.value })
+                      }
+                      className="w-full text-xs bg-white border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      Tipo y Documento *
+                    </label>
+                    <div className="flex gap-1.5">
+                      <select
+                        value={quoteFormData.clientDocType}
+                        onChange={(e) =>
+                          setQuoteFormData({ ...quoteFormData, clientDocType: e.target.value })
+                        }
+                        className="w-20 text-xs bg-white border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      >
+                        <option value="CC">CC</option>
+                        <option value="CE">CE</option>
+                        <option value="NIT">NIT</option>
+                        <option value="Pasaporte">Pasaporte</option>
+                      </select>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Número de cédula"
+                        value={quoteFormData.clientDocNumber}
+                        onChange={(e) =>
+                          setQuoteFormData({ ...quoteFormData, clientDocNumber: e.target.value })
+                        }
+                        className="flex-1 text-xs bg-white border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      Teléfono / WhatsApp *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={quoteFormData.clientPhone}
+                      onChange={(e) =>
+                        setQuoteFormData({ ...quoteFormData, clientPhone: e.target.value })
+                      }
+                      className="w-full text-xs bg-white border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      Correo Electrónico *
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      value={quoteFormData.clientEmail}
+                      onChange={(e) =>
+                        setQuoteFormData({ ...quoteFormData, clientEmail: e.target.value })
+                      }
+                      className="w-full text-xs bg-white border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      Dirección y Ciudad *
+                    </label>
+                    <div className="flex gap-1.5">
+                      <input
+                        type="text"
+                        required
+                        placeholder="Dirección"
+                        value={quoteFormData.clientAddress}
+                        onChange={(e) =>
+                          setQuoteFormData({ ...quoteFormData, clientAddress: e.target.value })
+                        }
+                        className="flex-1 text-xs bg-white border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Ciudad"
+                        value={quoteFormData.clientCity || "Ibagué"}
+                        onChange={(e) =>
+                          setQuoteFormData({ ...quoteFormData, clientCity: e.target.value })
+                        }
+                        className="w-24 text-xs bg-white border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Sección 2: Proyecto y Lote */}
+              <div className="bg-slate-50/70 p-3.5 rounded-xl border border-slate-200 space-y-3">
+                <span className="text-xs font-bold text-blue-950 uppercase tracking-wide block">
+                  2. Inmueble y Valores del Lote
+                </span>
+
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
+                  <div className="sm:col-span-2">
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      Proyecto Inmobiliario *
+                    </label>
+                    <select
+                      value={quoteFormData.projectName}
+                      onChange={(e) => handleQuoteProjectChange(e.target.value)}
+                      className="w-full text-xs bg-white border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none font-semibold text-blue-950"
+                    >
+                      {projectList.map((p) => (
+                        <option key={p} value={p}>
+                          {p}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      Etapa / Manzana
+                    </label>
+                    <div className="flex gap-1.5">
+                      <input
+                        type="text"
+                        placeholder="Etapa"
+                        value={quoteFormData.stage}
+                        onChange={(e) =>
+                          setQuoteFormData({ ...quoteFormData, stage: e.target.value })
+                        }
+                        className="w-1/2 text-xs bg-white border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Manzana"
+                        value={quoteFormData.block}
+                        onChange={(e) =>
+                          setQuoteFormData({ ...quoteFormData, block: e.target.value })
+                        }
+                        className="w-1/2 text-xs bg-white border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      Número de Lote *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Ej: Lote 14"
+                      value={quoteFormData.lotNumber}
+                      onChange={(e) =>
+                        setQuoteFormData({ ...quoteFormData, lotNumber: e.target.value })
+                      }
+                      className="w-full text-xs bg-white border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none font-semibold text-blue-950"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      Área Total (m²) *
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      min="1"
+                      step="any"
+                      value={quoteFormData.totalArea}
+                      onChange={(e) =>
+                        setQuoteFormData({
+                          ...quoteFormData,
+                          totalArea: Math.max(1, Number(e.target.value)),
+                        })
+                      }
+                      className="w-full text-xs bg-white border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none font-semibold"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      Valor por m² ($ COP) *
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      min="1000"
+                      step="5000"
+                      value={quoteFormData.pricePerSquareMeter}
+                      onChange={(e) =>
+                        setQuoteFormData({
+                          ...quoteFormData,
+                          pricePerSquareMeter: Math.max(0, Number(e.target.value)),
+                        })
+                      }
+                      className="w-full text-xs bg-white border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none font-semibold"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-2 flex items-center justify-between bg-blue-100/60 p-2.5 rounded-lg border border-blue-200">
+                    <div>
+                      <span className="text-[10px] font-bold text-blue-900 uppercase block">
+                        Valor Inmueble (Subtotal)
+                      </span>
+                      <span className="text-sm font-black text-blue-950">
+                        {formatCOP(quoteFormData.totalArea * quoteFormData.pricePerSquareMeter)}
+                      </span>
+                    </div>
+
+                    <div className="text-right">
+                      <span className="text-[10px] font-bold text-slate-600 uppercase block">
+                        Valor Final Cotizado
+                      </span>
+                      <span className="text-sm font-black text-emerald-800">
+                        {formatCOP(
+                          Math.max(
+                            0,
+                            quoteFormData.totalArea * quoteFormData.pricePerSquareMeter -
+                              (quoteFormData.hasDiscount ? quoteFormData.discountAmount || 0 : 0)
+                          )
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Descuento Opcional */}
+                <div className="pt-2 border-t border-slate-200/60">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={quoteFormData.hasDiscount}
+                      onChange={(e) =>
+                        setQuoteFormData({
+                          ...quoteFormData,
+                          hasDiscount: e.target.checked,
+                          discountAmount: e.target.checked ? quoteFormData.discountAmount || 5000000 : 0,
+                        })
+                      }
+                      className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4"
+                    />
+                    <span className="text-xs font-semibold text-slate-800">
+                      Aplica Bono o Descuento Comercial
+                    </span>
+                  </label>
+
+                  {quoteFormData.hasDiscount && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+                      <input
+                        type="number"
+                        placeholder="Monto Descuento ($ COP)"
+                        value={quoteFormData.discountAmount}
+                        onChange={(e) =>
+                          setQuoteFormData({
+                            ...quoteFormData,
+                            discountAmount: Number(e.target.value),
+                          })
+                        }
+                        className="text-xs bg-white border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Motivo del descuento (ej. Bono Visita a Terreno)"
+                        value={quoteFormData.discountDescription || ""}
+                        onChange={(e) =>
+                          setQuoteFormData({
+                            ...quoteFormData,
+                            discountDescription: e.target.value,
+                          })
+                        }
+                        className="text-xs bg-white border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Sección 3: Plan de Pago y Separación */}
+              <div className="bg-slate-50/70 p-3.5 rounded-xl border border-slate-200 space-y-3">
+                <span className="text-xs font-bold text-blue-950 uppercase tracking-wide block">
+                  3. Plan de Pagos, Separación y Asignación
+                </span>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      Valor de Separación ($ COP) *
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      min="0"
+                      step="500000"
+                      value={quoteFormData.reservationAmount}
+                      onChange={(e) =>
+                        setQuoteFormData({
+                          ...quoteFormData,
+                          reservationAmount: Number(e.target.value),
+                        })
+                      }
+                      className="w-full text-xs bg-white border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 font-semibold"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      Cuotas Pactadas (Meses)
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="72"
+                      value={quoteFormData.installmentsCount}
+                      onChange={(e) =>
+                        setQuoteFormData({
+                          ...quoteFormData,
+                          installmentsCount: Number(e.target.value),
+                        })
+                      }
+                      className="w-full text-xs bg-white border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 font-semibold"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      Asesor Comercial
+                    </label>
+                    <select
+                      value={quoteFormData.advisorId || ""}
+                      onChange={(e) =>
+                        setQuoteFormData({ ...quoteFormData, advisorId: e.target.value })
+                      }
+                      className="w-full text-xs bg-white border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Seleccionar Asesor...</option>
+                      {advisors.map((adv) => (
+                        <option key={adv.id} value={adv.id}>
+                          {adv.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="sm:col-span-3">
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      Observaciones / Compromisos de la Visita
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={quoteFormData.observations || ""}
+                      onChange={(e) =>
+                        setQuoteFormData({ ...quoteFormData, observations: e.target.value })
+                      }
+                      placeholder="Condiciones comerciales pactadas, notas de visita, etc."
+                      className="w-full text-xs bg-white border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Botones de acción */}
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setShowQuoteModal(false)}
+                  className="px-4 py-2 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isPending}
+                  className="px-5 py-2.5 rounded-lg bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-2"
+                >
+                  {isPending ? "Generando Cotización..." : "Generar Cotización e Iniciar Trazabilidad"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

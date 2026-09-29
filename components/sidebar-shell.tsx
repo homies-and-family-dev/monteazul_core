@@ -145,6 +145,30 @@ function IconShield({ className = "w-5 h-5" }: { className?: string }) {
   );
 }
 
+function IconFileText({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+    </svg>
+  );
+}
+
+function IconFileCheck({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+    </svg>
+  );
+}
+
+function IconBuilding({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+    </svg>
+  );
+}
+
 function IconChevronDown({ className = "w-4 h-4" }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -420,7 +444,7 @@ export default function SidebarShell({
           </div>
 
           {/* GRUPO 2: ESTRATEGIA Y GERENCIA (Directores y Gerencia) */}
-          {(permissions.canAccessStrategySection ?? (permissions.canAccessManagement || (permissions.canAccessGoals ?? true))) && (
+          {Boolean(permissions.canAccessStrategySection ?? (permissions.canAccessManagement || permissions.canAccessGoals)) && (
             <div>
               {!isCollapsed ? (
                 <div className="flex items-center justify-between px-3 pb-1">
@@ -457,7 +481,7 @@ export default function SidebarShell({
                     </Link>
                   )}
 
-                  {(permissions.canAccessGoals ?? true) && (
+                  {Boolean(permissions.canAccessGoals) && (
                     <Link
                       href="/goals"
                       title={isCollapsed ? "Objetivos Gerenciales y de Área" : undefined}
@@ -477,7 +501,7 @@ export default function SidebarShell({
           )}
 
           {/* GRUPO 3: ÁREAS FUNCIONALES */}
-          {(permissions.canAccessMarketing || (permissions.canAccessCommercial ?? true)) && (
+          {Boolean(permissions.canAccessMarketing || permissions.canAccessCommercial) && (
             <div>
               {!isCollapsed ? (
                 <div className="flex items-center justify-between px-3 pb-1">
@@ -513,9 +537,9 @@ export default function SidebarShell({
                   ) : (
                     <Link
                       href={
-                        (permissions.canAccessMarketingCampaigns ?? true)
+                        permissions.canAccessMarketingCampaigns
                           ? "/marketing"
-                          : (permissions.canAccessMarketingCalendar ?? true)
+                          : permissions.canAccessMarketingCalendar
                           ? "/marketing/calendar"
                           : "/marketing/equipment"
                       }
@@ -533,7 +557,7 @@ export default function SidebarShell({
                   {/* Submódulos de Marketing desplegables */}
                   {(!isCollapsed ? marketingOpen : false) && (
                     <div className="pl-4 ml-2 border-l border-blue-200 space-y-1 pt-1">
-                      {(permissions.canAccessMarketingCampaigns ?? true) && (
+                      {Boolean(permissions.canAccessMarketingCampaigns) && (
                         <Link
                           href="/marketing"
                           className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
@@ -547,7 +571,7 @@ export default function SidebarShell({
                         </Link>
                       )}
 
-                      {(permissions.canAccessMarketingCalendar ?? true) && (
+                      {Boolean(permissions.canAccessMarketingCalendar) && (
                         <Link
                           href="/marketing/calendar"
                           className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
@@ -561,7 +585,7 @@ export default function SidebarShell({
                         </Link>
                       )}
 
-                      {(permissions.canAccessMarketingEquipment ?? true) && (
+                      {Boolean(permissions.canAccessMarketingEquipment) && (
                         <Link
                           href="/marketing/equipment"
                           className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
@@ -580,7 +604,7 @@ export default function SidebarShell({
               )}
 
               {/* Acordeón del Área Comercial */}
-              {(permissions.canAccessCommercial ?? true) && (
+              {Boolean(permissions.canAccessCommercial) && (
                 <div className={`space-y-1 ${permissions.canAccessMarketing ? "mt-2" : ""}`}>
                   {!isCollapsed ? (
                     <button
@@ -602,8 +626,8 @@ export default function SidebarShell({
                     </button>
                   ) : (
                     <Link
-                      href="/commercial/schedule"
-                      title="Área Comercial — Agendamiento de Visitas"
+                      href="/commercial/quotes"
+                      title="Área Comercial — Cotizaciones y Contratos"
                       className={`flex items-center justify-center p-2 rounded-lg text-xs font-semibold transition-all ${
                         isCommercialActive
                           ? "bg-blue-700 text-white shadow-xs"
@@ -618,16 +642,54 @@ export default function SidebarShell({
                   {(!isCollapsed ? commercialOpen : false) && (
                     <div className="pl-4 ml-2 border-l border-blue-200 space-y-1 pt-1">
                       <Link
-                        href="/commercial/schedule"
+                        href="/commercial/clients"
                         className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
-                          isRouteActive("/commercial/schedule", true)
+                          isRouteActive("/commercial/clients")
                             ? "bg-blue-700 text-white font-bold shadow-xs"
                             : "text-slate-700 hover:bg-blue-100/80 hover:text-blue-950"
                         }`}
                       >
-                        <IconCalendar className="w-3.5 h-3.5 shrink-0" />
-                        <span className="truncate">Agendamiento de Visitas</span>
+                        <IconUsers className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate">Directorio de Clientes</span>
                       </Link>
+
+                      <Link
+                        href="/commercial/quotes"
+                        className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
+                          isRouteActive("/commercial/quotes")
+                            ? "bg-blue-700 text-white font-bold shadow-xs"
+                            : "text-slate-700 hover:bg-blue-100/80 hover:text-blue-950"
+                        }`}
+                      >
+                        <IconFileText className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate">Cotizaciones y Proceso</span>
+                      </Link>
+
+                      <Link
+                        href="/commercial/contracts"
+                        className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
+                          isRouteActive("/commercial/contracts")
+                            ? "bg-blue-700 text-white font-bold shadow-xs"
+                            : "text-slate-700 hover:bg-blue-100/80 hover:text-blue-950"
+                        }`}
+                      >
+                        <IconFileCheck className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate">Contratos de Separación</span>
+                      </Link>
+
+                      {Boolean(permissions.canAccessCommercialSchedule) && (
+                        <Link
+                          href="/commercial/schedule"
+                          className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
+                            isRouteActive("/commercial/schedule", true)
+                              ? "bg-blue-700 text-white font-bold shadow-xs"
+                              : "text-slate-700 hover:bg-blue-100/80 hover:text-blue-950"
+                          }`}
+                        >
+                          <IconCalendar className="w-3.5 h-3.5 shrink-0" />
+                          <span className="truncate">Agendamiento de Visitas</span>
+                        </Link>
+                      )}
                     </div>
                   )}
                 </div>
@@ -680,6 +742,20 @@ export default function SidebarShell({
                     {!isCollapsed && <span className="truncate">Roles y Permisos</span>}
                   </Link>
                 )}
+
+                {/* OPCIÓN: PROYECTOS INMOBILIARIOS / DE INTERÉS */}
+                <Link
+                  href="/masters?tab=projects"
+                  title={isCollapsed ? "Proyectos Inmobiliarios y de Interés" : undefined}
+                  className={`flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
+                    pathname === "/masters" && currentTab === "projects"
+                      ? "bg-blue-700 text-white shadow-xs"
+                      : "text-slate-700 hover:bg-blue-100/80 hover:text-blue-950"
+                  } ${isCollapsed ? "justify-center px-2" : ""}`}
+                >
+                  <IconBuilding className="w-4 h-4 shrink-0" />
+                  {!isCollapsed && <span className="truncate">Proyectos de Interés</span>}
+                </Link>
 
                 {/* OPCIÓN 3: CATÁLOGOS Y LISTAS MAESTRAS */}
                 {!isCollapsed ? (

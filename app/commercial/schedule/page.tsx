@@ -43,12 +43,10 @@ export default async function CommercialSchedulePage() {
 
   const isGeneralAdmin =
     rolesList.includes("Administrador General") ||
-    rolesList.includes("Gerencia") ||
-    permissionsList.includes("masters:manage_roles");
+    rolesList.includes("Gerencia");
 
   const canAccessCommercial =
     isGeneralAdmin ||
-    areasList.includes("Comercial") ||
     permissionsList.includes("commercial:schedule") ||
     permissionsList.includes("commercial:view");
 
@@ -70,11 +68,38 @@ export default async function CommercialSchedulePage() {
     );
   }
 
-  // Cargar todas las visitas agendadas
+  // Cargar todas las visitas agendadas con su trazabilidad de cotizaciones y cliente unificado
   const bookings = await prisma.commercialBooking.findMany({
     include: {
       assignedAdvisor: { select: { id: true, name: true, email: true } },
       createdBy: { select: { id: true, name: true } },
+      quotes: {
+        select: {
+          id: true,
+          consecutive: true,
+          status: true,
+          finalPrice: true,
+          date: true,
+          projectName: true,
+          lotNumber: true,
+          dataValidated: true,
+          contract: {
+            select: { id: true, contractNumber: true, status: true },
+          },
+        },
+        orderBy: { date: "desc" },
+      },
+      client: {
+        select: {
+          id: true,
+          docType: true,
+          docNumber: true,
+          address: true,
+          city: true,
+          civilStatus: true,
+          bank: true,
+        },
+      },
     },
     orderBy: { date: "asc" },
   });
@@ -115,10 +140,24 @@ export default async function CommercialSchedulePage() {
           take: 20,
         });
 
+  // Proyectos comerciales activos para la selección y filtro con sus parámetros de precios y etapas
+  const projects = await prisma.commercialProject.findMany({
+    where: { active: true },
+    select: {
+      id: true,
+      name: true,
+      defaultPricePerM2: true,
+      stages: true,
+      blocks: true,
+    },
+    orderBy: { name: "asc" },
+  });
+
   return (
     <CommercialScheduleView
       initialBookings={bookings}
       advisors={availableAdvisors}
+      projects={projects}
       canEdit={true}
     />
   );

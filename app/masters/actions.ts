@@ -5,6 +5,8 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
+import fs from "fs/promises";
+import path from "path";
 
 async function verifyMasterPermission(targetAreaId?: string | null) {
   const session = await auth();
@@ -422,10 +424,12 @@ export async function updateRolePermissions(formData: FormData) {
     }
   });
 
+  revalidatePath("/", "layout");
   revalidatePath("/masters");
   revalidatePath("/management");
   revalidatePath("/goals");
   revalidatePath("/marketing");
+  revalidatePath("/commercial");
   revalidatePath("/requests");
 }
 
@@ -486,6 +490,7 @@ export async function updateUserDelegation(formData: FormData) {
     }
   });
 
+  revalidatePath("/", "layout");
   revalidatePath("/masters");
   revalidatePath("/requests");
 }
@@ -578,4 +583,376 @@ export async function toggleUserStatus(formData: FormData) {
   });
 
   revalidatePath("/masters");
+}
+
+// ------------------------------------------------------------
+// GESTIÓN DE PROYECTOS INMOBILIARIOS / COMERCIALES
+// ------------------------------------------------------------
+
+async function verifyProjectPermission() {
+  const session = await auth();
+  if (!session?.user?.id) {
+    redirect("/login");
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    include: {
+      roles: {
+        include: {
+          role: {
+            include: {
+              permissions: {
+                include: { permission: true },
+              },
+            },
+          },
+        },
+      },
+      areas: { include: { area: true } },
+    },
+  });
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  const isGeneralAdmin = user.roles.some(
+    (r) => r.role.name === "Administrador General" || r.role.name === "Gerencia"
+  );
+
+  const isCommercialDirectorOrLeader =
+    user.roles.some((r) => {
+      const name = r.role.name.toLowerCase();
+      return name.includes("director") || name.includes("gerente") || name.includes("comercial");
+    }) ||
+    user.areas.some((a) => a.area.name.toLowerCase().includes("comercial"));
+
+  const userPermissions = user.roles.flatMap((r) =>
+    r.role.permissions.map((p) => p.permission.key)
+  );
+
+  const canManageProjects =
+    isGeneralAdmin ||
+    isCommercialDirectorOrLeader ||
+    userPermissions.includes("masters:manage_catalogs") ||
+    userPermissions.includes("commercial:view");
+
+  if (!canManageProjects) {
+    throw new Error(
+      "Acceso denegado: no cuenta con permisos suficientes para gestionar el catálogo de proyectos comerciales."
+    );
+  }
+
+  return { user, isGeneralAdmin };
+}
+
+function parseListString(raw: string, defaultItem: string): string[] {
+  if (!raw || !raw.trim()) return [defaultItem];
+  const items = raw
+    .split(/[\n,;]+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return items.length > 0 ? Array.from(new Set(items)) : [defaultItem];
+}
+
+function generateSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)+/g, "");
+}
+
+async function saveProjectLogoFile(
+  fileEntry: FormDataEntryValue | null,
+  slug: string
+): Promise<string | null> {
+  if (!fileEntry || !(fileEntry instanceof File) || fileEntry.size === 0) {
+    return null;
+  }
+
+  const bytes = await fileEntry.arrayBuffer();
+  const buffer = Buffer.from(bytes);
+
+  const originalName = fileEntry.name || "logo.png";
+  const extMatch = originalName.match(/\.([a-zA-Z0-9]+)$/);
+  const rawExt = extMatch ? extMatch[1].toLowerCase() : "png";
+  const validExts = ["png", "jpg", "jpeg", "webp", "svg"];
+  const ext = validExts.includes(rawExt) ? rawExt : "png";
+
+  const fileName = `${slug}-${Date.now()}.${ext}`;
+  const uploadDir = path.join(process.cwd(), "public", "logos", "projects");
+  await fs.mkdir(uploadDir, { recursive: true });
+  const filePath = path.join(uploadDir, fileName);
+
+  await fs.writeFile(filePath, buffer);
+  return `/logos/projects/${fileName}`;
+}
+
+export async function createCommercialProject(formData: FormData) {
+  await verifyProjectPermission();
+
+  const name = String(formData.get("name") ?? "").trim();
+  const rawLegalName = String(formData.get("legalName") ?? "").trim();
+  const legalName = rawLegalName || name.toUpperCase();
+  const location = String(formData.get("location") ?? "").trim();
+  const cityDepartment = String(formData.get("cityDepartment") ?? "").trim();
+  const authorizedBankAccounts = String(formData.get("authorizedBankAccounts") ?? "").trim();
+  const defaultPricePerM2 = Math.max(1000, Number(formData.get("defaultPricePerM2")) || 150000);
+  const stagesRaw = String(formData.get("stages") ?? "");
+  const blocksRaw = String(formData.get("blocks") ?? "");
+  const description = String(formData.get("description") ?? "").trim() || null;
+
+  if (!name) {
+    throw new Error("El nombre comercial del proyecto es obligatorio.");
+  }
+  if (!location) {
+    throw new Error("La ubicación o dirección legal del proyecto es obligatoria.");
+  }
+  if (!cityDepartment) {
+    throw new Error("El municipio y departamento son obligatorios.");
+  }
+  if (!authorizedBankAccounts) {
+    throw new Error("Las cuentas bancarias autorizadas para pagos son obligatorias.");
+  }
+
+  const stages = parseListString(stagesRaw, "Etapa 1");
+  const blocks = parseListString(blocksRaw, "Manzana A");
+
+  let slug = generateSlug(name);
+  const existingWithSlug = await prisma.commercialProject.findFirst({
+    where: { slug },
+  });
+  if (existingWithSlug) {
+    slug = `${slug}-${Date.now().toString().slice(-4)}`;
+  }
+
+  const existingWithName = await prisma.commercialProject.findFirst({
+    where: {
+      name: { equals: name, mode: "insensitive" },
+    },
+  });
+  if (existingWithName) {
+    throw new Error(`Ya existe un proyecto registrado con el nombre "${name}".`);
+  }
+
+  // Procesar archivo de imagen del logo
+  const uploadedLogoUrl = await saveProjectLogoFile(formData.get("logoFile"), slug);
+  const rawLogoUrl = String(formData.get("logoUrl") ?? "").trim() || null;
+  const logoUrl = uploadedLogoUrl || rawLogoUrl;
+
+  await prisma.commercialProject.create({
+    data: {
+      slug,
+      name,
+      legalName,
+      location,
+      cityDepartment,
+      authorizedBankAccounts,
+      defaultPricePerM2,
+      stages,
+      blocks,
+      description,
+      logoUrl,
+      active: true,
+    },
+  });
+
+  revalidatePath("/masters");
+  revalidatePath("/commercial");
+  revalidatePath("/commercial/quotes");
+  revalidatePath("/commercial/contracts");
+  revalidatePath("/commercial/schedule");
+  revalidatePath("/commercial/clients");
+}
+
+export async function updateCommercialProject(formData: FormData) {
+  await verifyProjectPermission();
+
+  const id = String(formData.get("id") ?? "").trim();
+  if (!id) {
+    throw new Error("ID de proyecto no especificado.");
+  }
+
+  const name = String(formData.get("name") ?? "").trim();
+  const rawLegalName = String(formData.get("legalName") ?? "").trim();
+  const legalName = rawLegalName || name.toUpperCase();
+  const location = String(formData.get("location") ?? "").trim();
+  const cityDepartment = String(formData.get("cityDepartment") ?? "").trim();
+  const authorizedBankAccounts = String(formData.get("authorizedBankAccounts") ?? "").trim();
+  const defaultPricePerM2 = Math.max(1000, Number(formData.get("defaultPricePerM2")) || 150000);
+  const stagesRaw = String(formData.get("stages") ?? "");
+  const blocksRaw = String(formData.get("blocks") ?? "");
+  const description = String(formData.get("description") ?? "").trim() || null;
+
+  if (!name) {
+    throw new Error("El nombre comercial del proyecto es obligatorio.");
+  }
+  if (!location) {
+    throw new Error("La ubicación legal del proyecto es obligatoria.");
+  }
+  if (!cityDepartment) {
+    throw new Error("El municipio y departamento son obligatorios.");
+  }
+  if (!authorizedBankAccounts) {
+    throw new Error("Las cuentas bancarias autorizadas son obligatorias.");
+  }
+
+  const stages = parseListString(stagesRaw, "Etapa 1");
+  const blocks = parseListString(blocksRaw, "Manzana A");
+
+  const existing = await prisma.commercialProject.findUniqueOrThrow({
+    where: { id },
+  });
+
+  // Si cambia el nombre, verificar que no colisione con otro
+  if (existing.name.toLowerCase() !== name.toLowerCase()) {
+    const duplicate = await prisma.commercialProject.findFirst({
+      where: {
+        id: { not: id },
+        name: { equals: name, mode: "insensitive" },
+      },
+    });
+    if (duplicate) {
+      throw new Error(`Ya existe otro proyecto registrado con el nombre "${name}".`);
+    }
+  }
+
+  // Procesar actualización o eliminación de logo
+  const removeLogo = formData.get("removeLogo") === "true";
+  const uploadedLogoUrl = await saveProjectLogoFile(formData.get("logoFile"), existing.slug);
+  const rawLogoUrl = String(formData.get("logoUrl") ?? "").trim();
+
+  let logoUrl = existing.logoUrl;
+  if (removeLogo) {
+    logoUrl = null;
+  } else if (uploadedLogoUrl) {
+    logoUrl = uploadedLogoUrl;
+  } else if (rawLogoUrl !== "") {
+    logoUrl = rawLogoUrl;
+  }
+
+  await prisma.commercialProject.update({
+    where: { id },
+    data: {
+      name,
+      legalName,
+      location,
+      cityDepartment,
+      authorizedBankAccounts,
+      defaultPricePerM2,
+      stages,
+      blocks,
+      description,
+      logoUrl,
+    },
+  });
+
+  revalidatePath("/masters");
+  revalidatePath("/commercial");
+  revalidatePath("/commercial/quotes");
+  revalidatePath("/commercial/contracts");
+  revalidatePath("/commercial/schedule");
+  revalidatePath("/commercial/clients");
+}
+
+export async function toggleCommercialProjectActive(id: string) {
+  await verifyProjectPermission();
+
+  if (!id) {
+    throw new Error("ID de proyecto no especificado.");
+  }
+
+  const project = await prisma.commercialProject.findUniqueOrThrow({
+    where: { id },
+  });
+
+  await prisma.commercialProject.update({
+    where: { id },
+    data: {
+      active: !project.active,
+    },
+  });
+
+  revalidatePath("/masters");
+  revalidatePath("/commercial");
+  revalidatePath("/commercial/quotes");
+  revalidatePath("/commercial/contracts");
+  revalidatePath("/commercial/schedule");
+  revalidatePath("/commercial/clients");
+}
+
+export async function deleteCommercialProject(id: string) {
+  await verifyProjectPermission();
+
+  if (!id) {
+    throw new Error("ID de proyecto no especificado.");
+  }
+
+  const project = await prisma.commercialProject.findUniqueOrThrow({
+    where: { id },
+  });
+
+  // Verificar si hay cotizaciones o contratos con este proyecto
+  const [quotesCount, contractsCount, bookingsCount] = await Promise.all([
+    prisma.commercialQuote.count({
+      where: {
+        projectName: {
+          contains: project.name,
+          mode: "insensitive",
+        },
+      },
+    }),
+    prisma.commercialContract.count({
+      where: {
+        projectName: {
+          contains: project.name,
+          mode: "insensitive",
+        },
+      },
+    }),
+    prisma.commercialBooking.count({
+      where: {
+        project: {
+          contains: project.name,
+          mode: "insensitive",
+        },
+      },
+    }),
+  ]);
+
+  if (quotesCount > 0 || contractsCount > 0 || bookingsCount > 0) {
+    // Si tiene registros históricos vinculados, no se borra físicamente para preservar la trazabilidad, se desactiva
+    await prisma.commercialProject.update({
+      where: { id },
+      data: { active: false },
+    });
+
+    revalidatePath("/masters");
+    revalidatePath("/commercial");
+    revalidatePath("/commercial/quotes");
+    revalidatePath("/commercial/contracts");
+    revalidatePath("/commercial/schedule");
+    revalidatePath("/commercial/clients");
+
+    return {
+      softDeleted: true,
+      message: `El proyecto "${project.name}" tiene ${quotesCount} cotizaciones, ${contractsCount} contratos y/o ${bookingsCount} visitas registradas. Para preservar la trazabilidad jurídica e histórica se ha marcado como Inactivo en lugar de borrarlo permanentemente.`,
+    };
+  }
+
+  await prisma.commercialProject.delete({
+    where: { id },
+  });
+
+  revalidatePath("/masters");
+  revalidatePath("/commercial");
+  revalidatePath("/commercial/quotes");
+  revalidatePath("/commercial/contracts");
+  revalidatePath("/commercial/schedule");
+  revalidatePath("/commercial/clients");
+
+  return { softDeleted: false, message: `Proyecto "${project.name}" eliminado satisfactoriamente.` };
 }

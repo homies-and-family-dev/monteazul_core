@@ -54,8 +54,7 @@ export default async function ActaPage({ params, searchParams }: PageProps) {
 
   const isGeneralAdmin =
     rolesList.includes("Administrador General") ||
-    rolesList.includes("Gerencia") ||
-    permissionsList.includes("masters:manage_roles");
+    rolesList.includes("Gerencia");
 
   const isMarketingMember =
     areasList.includes("Marketing") ||

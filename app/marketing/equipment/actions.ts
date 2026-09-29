@@ -40,8 +40,7 @@ async function checkMarketingAccess() {
 
   const isGeneralAdmin =
     rolesList.includes("Administrador General") ||
-    rolesList.includes("Gerencia") ||
-    permissionsList.includes("masters:manage_roles");
+    rolesList.includes("Gerencia");
 
   const isMarketingMember =
     currentUser?.areas.some((a) => a.area.name === "Marketing") ||
@@ -456,10 +455,7 @@ export async function signLoanActa(formData: FormData) {
   const rolesList = currentUser.roles.map((r) => r.role.name);
   const isGeneralAdmin =
     rolesList.includes("Administrador General") ||
-    rolesList.includes("Gerencia") ||
-    currentUser.roles.some((r) =>
-      r.role.permissions.some((p) => p.permission.key === "masters:manage_roles")
-    );
+    rolesList.includes("Gerencia");
   const isMarketingMember =
     currentUser.areas.some((a) => a.area.name === "Marketing") ||
     currentUser.roles.some((r) =>

@@ -5,6 +5,7 @@ import Link from "next/link";
 import MastersManager from "./masters-manager";
 import RolesManager from "./roles-manager";
 import UsersDelegationManager from "./users-delegation-manager";
+import ProjectsManager from "./projects-manager";
 
 export const metadata = {
   title: "Datos Maestros, Roles y Delegación — Monte Azul Suite",
@@ -66,13 +67,24 @@ export default async function MastersPage({
       r.role.name.toLowerCase().includes("director")
   );
 
+  const isCommercialMember = currentUser.areas.some(
+    (a) => a.area.name.toLowerCase().includes("comercial")
+  );
+
   const userAreaIds = currentUser.areas.map((a) => a.areaId);
 
   const canAccessMasters =
     isGeneralAdmin ||
     userPermissions.includes("masters:view") ||
     userPermissions.includes("masters:manage_catalogs") ||
-    userPermissions.includes("masters:manage_roles");
+    userPermissions.includes("masters:manage_roles") ||
+    isCommercialMember;
+
+  const canManageProjects =
+    isGeneralAdmin ||
+    isAreaDirector ||
+    isCommercialMember ||
+    userPermissions.includes("masters:manage_catalogs");
 
   // Restricción de acceso general
   if (!canAccessMasters) {
@@ -108,7 +120,7 @@ export default async function MastersPage({
   });
 
   // Consultas concurrentes para alimentar las distintas pestañas
-  const [masterTypes, masterValues, roles, permissions, users] =
+  const [masterTypes, masterValues, roles, permissions, users, commercialProjects] =
     await Promise.all([
       // 1. Catálogos maestros
       prisma.masterType.findMany({
@@ -184,9 +196,20 @@ export default async function MastersPage({
         },
         orderBy: { name: "asc" },
       }),
+
+      // 6. Proyectos comerciales de la base de datos
+      prisma.commercialProject.findMany({
+        orderBy: { name: "asc" },
+      }),
     ]);
 
   const sectionInfo = {
+    projects: {
+      title: "Proyectos Inmobiliarios y de Interés",
+      subtitle:
+        "Catálogo oficial de proyectos de Monteazul: administre nombres, denominación legal, ubicación, etapas, manzanas, precios base por m² y cuentas autorizadas para cotizaciones y contratos.",
+      badge: "Catálogo Inmobiliario",
+    },
     users: {
       title: "Usuarios y Delegación de Actividades",
       subtitle:
@@ -211,7 +234,7 @@ export default async function MastersPage({
         ? "Gestión Corporativa y de Todas las Áreas"
         : "Gestión de Catálogos de su Área",
     },
-  }[activeTab as "users" | "roles" | "catalogs"] || {
+  }[activeTab as "projects" | "users" | "roles" | "catalogs"] || {
     title: "Datos Maestros y Parámetros",
     subtitle:
       "Puntos 24 y 25 del Documento Maestro: Autonomía operativa para configurar listas, tipos de solicitud y prioridades sin recurrir a desarrollo.",
@@ -241,7 +264,14 @@ export default async function MastersPage({
           </div>
         </div>
 
-        {/* Contenido según la opción seleccionada exclusivamente desde el menú lateral */}
+        {/* Contenido según la pestaña seleccionada */}
+        {activeTab === "projects" && (
+          <ProjectsManager
+            projects={commercialProjects}
+            canManage={canManageProjects}
+          />
+        )}
+
         {activeTab === "catalogs" && (
           <MastersManager
             masterTypes={masterTypes}
@@ -278,3 +308,4 @@ export default async function MastersPage({
     </div>
   );
 }
+

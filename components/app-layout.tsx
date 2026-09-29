@@ -48,13 +48,7 @@ export default async function AppLayout({
   // Verificación de capacidades según roles y permisos de vistas
   const isGeneralAdmin =
     rolesList.includes("Administrador General") ||
-    rolesList.includes("Gerencia") ||
-    permissionsList.includes("masters:manage_roles");
-
-  const isMarketingMember = areasList.includes("Marketing");
-  const isOtherAreaDirector =
-    rolesList.some((r) => r.toLowerCase().includes("director")) &&
-    !areasList.includes("Marketing");
+    rolesList.includes("Gerencia");
 
   // Estrategia y Gerencia:
   // Control estricto por permisos de la matriz de roles configurada en el sistema
@@ -97,14 +91,17 @@ export default async function AppLayout({
     canAccessMarketingEquipment;
 
   // Capacidades operativas del Área Comercial:
-  const isCommercialMember = areasList.includes("Comercial");
+  // Control estricto por permisos asignados al rol en la matriz de permisos
   const canAccessCommercialSchedule =
     isGeneralAdmin ||
-    isCommercialMember ||
     permissionsList.includes("commercial:schedule") ||
     permissionsList.includes("commercial:view");
 
-  const canAccessCommercial = canAccessCommercialSchedule;
+  const canAccessCommercial =
+    isGeneralAdmin ||
+    permissionsList.includes("commercial:view") ||
+    permissionsList.includes("commercial:quotes") ||
+    canAccessCommercialSchedule;
 
   const permissions = {
     isGeneralAdmin,

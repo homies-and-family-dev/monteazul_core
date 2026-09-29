@@ -38,8 +38,7 @@ export default async function MarketingCalendarPage() {
 
   const isGeneralAdmin =
     rolesList.includes("Administrador General") ||
-    rolesList.includes("Gerencia") ||
-    permissionsList.includes("masters:manage_roles");
+    rolesList.includes("Gerencia");
 
   const canAccessCalendar =
     isGeneralAdmin ||
